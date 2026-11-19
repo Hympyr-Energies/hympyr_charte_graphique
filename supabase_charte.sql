@@ -64,3 +64,43 @@ create policy charte_prog_update on public.charte_progression for update to auth
 -- Ajouter ensuite les membres autorises (un par ligne) :
 -- insert into public.charte_membres (email, nom) values
 --   ('prenom.nom@hympyr.fr', 'Prenom Nom');
+
+-- ===== Edition (couleurs, logos, typographies) =====
+create table if not exists public.charte_config (
+  id int primary key default 1 check (id = 1),
+  data jsonb not null default '{}'::jsonb,
+  maj_le timestamptz not null default now(),
+  maj_par text
+);
+alter table public.charte_config enable row level security;
+
+create or replace function public.charte_peut_editer()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.charte_membres m
+    where lower(m.email) = lower(auth.jwt() ->> 'email') and m.actif and m.role in ('editeur','admin')
+  );
+$$;
+revoke all on function public.charte_peut_editer() from public, anon;
+grant execute on function public.charte_peut_editer() to authenticated;
+
+create policy charte_config_select on public.charte_config for select to authenticated
+  using (public.charte_est_membre());
+create policy charte_config_insert on public.charte_config for insert to authenticated
+  with check (public.charte_peut_editer());
+create policy charte_config_update on public.charte_config for update to authenticated
+  using (public.charte_peut_editer()) with check (public.charte_peut_editer());
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('charte-assets', 'charte-assets', true, 5242880)
+on conflict (id) do nothing;
+
+create policy charte_assets_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'charte-assets' and public.charte_peut_editer());
+create policy charte_assets_update on storage.objects for update to authenticated
+  using (bucket_id = 'charte-assets' and public.charte_peut_editer());
+create policy charte_assets_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'charte-assets' and public.charte_peut_editer());
+
+-- Donner le droit d'edition a un membre :
+-- update public.charte_membres set role = 'admin' where email = 'prenom.nom@hympyr.fr';
