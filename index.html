@@ -195,8 +195,9 @@ html[data-theme="dark"] .sh{filter:blur(80px)}
 .logo .wm b{font-weight:800;font-size:19px;letter-spacing:.06em}
 .logo .wm i{font-style:normal;font-weight:600;font-size:8.5px;letter-spacing:.62em;color:var(--mark);margin-top:4px;transition:color .5s var(--ease)}
 
-.logo-img{display:block;height:36px;width:auto;max-width:200px;object-fit:contain}
+.logo-img{display:block;height:36px;width:auto;max-width:min(240px,50vw);object-fit:contain}
 .login-card .logo-img{height:44px;margin:0 auto}
+.card .logo-img{width:100%;max-width:240px;height:auto;min-width:0}
 
 /* =========================================================
    EDITOR DRAWER
@@ -983,7 +984,7 @@ const DEFAULT_ROLES={
 BRAND_KEYS.forEach(k=>BRANDS[k].colors.forEach((c,i)=>c.r=[...(DEFAULT_ROLES[k][i]||[])]));
 const DEFAULTS={
   brands:Object.fromEntries(BRAND_KEYS.map(k=>[k,{colors:clone(BRANDS[k].colors)}])),
-  logos:{},
+  logos:{energies:{light:'assets/hympyr-energies-fonce.svg',dark:'assets/hympyr-energies-clair.svg'}},
   fonts:{titres:{family:'Poppins',src:'google'},texte:{family:'Poppins',src:'google'}}
 };
 let CONF=clone(DEFAULTS), ACT=CONF, CONF_META=null;
@@ -993,11 +994,12 @@ function normConf(d){
     if(Array.isArray(cs)&&cs.length) c.brands[k].colors=cs.filter(x=>x&&/^#[0-9a-f]{6}$/i.test(x.h)).map(x=>({n:String(x.n||'Couleur').slice(0,40),h:x.h.toUpperCase(),u:String(x.u||'').slice(0,160),r:Array.isArray(x.r)?x.r.filter(r=>ROLES.some(R=>R[0]===r)):[]}));
     if(!c.brands[k].colors.length) c.brands[k].colors=clone(DEFAULTS.brands[k].colors);});
   if(d.logos&&typeof d.logos==='object') BRAND_KEYS.forEach(k=>{const l=d.logos[k];
-    if(l) c.logos[k]={light:/^https:\/\//.test(l.light||'')?l.light:'',dark:/^https:\/\//.test(l.dark||'')?l.dark:''}});
+    if(l){const dflt=DEFAULTS.logos[k]||{};c.logos[k]={light:/^https:\/\//.test(l.light||'')?l.light:(dflt.light||''),dark:/^https:\/\//.test(l.dark||'')?l.dark:(dflt.dark||'')}}});
   ['titres','texte'].forEach(t=>{const f=d.fonts&&d.fonts[t];
     if(f&&f.family) c.fonts[t]={family:String(f.family).replace(/["'<>;{}\\]/g,'').trim().slice(0,60)||'Poppins',src:(f.src==='google'||/^https:\/\//.test(f.src||''))?f.src:'google'}});
   return c;
 }
+function logoSet(k,conf=ACT){const L=conf.logos[k]||{},D=DEFAULTS.logos[k]||{};return {light:L.light||D.light||'',dark:L.dark||D.dark||''}}
 function roleHex(k,role,conf=ACT){
   const c=conf.brands[k].colors.find(x=>x.r&&x.r.includes(role)); if(c) return c.h;
   return (DEFAULTS.brands[k].colors.find(x=>x.r.includes(role))||{h:'#5B636A'}).h;
@@ -1176,7 +1178,7 @@ function setBrand(b){
    LOGO
    ========================================================= */
 function logoHTML(b=root.dataset.brand){
-  const L=ACT.logos[b]||{}; const url=root.dataset.theme==='dark'?(L.dark||L.light):(L.light||L.dark);
+  const L=logoSet(b); const url=root.dataset.theme==='dark'?(L.dark||L.light):(L.light||L.dark);
   if(url) return `<img class="logo-img" src="${esc(url)}" alt="Hympyr ${esc(BRANDS[b].court)}">`;
   return `<span class="mk"><svg viewBox="0 0 24 24"><path d="M7 5v14M17 5v14M7 12h10"/><path d="M12 12l3.2-4" stroke-width="2"/></svg></span><span class="wm"><b>HYMPYR</b><i>${BRANDS[b].sub}</i></span>`;
 }
@@ -1353,7 +1355,7 @@ function renderTypo(){
       </ul></div>`;
 }
 function renderLogo(){
-  const tiles=BRAND_KEYS.map(k=>{const b=BRANDS[k];const deep=roleHex(k,'profond');const acc=k==='groupe'?'#F5F4F0':roleHex(k,'accent');const L=ACT.logos[k]||{};
+  const tiles=BRAND_KEYS.map(k=>{const b=BRANDS[k];const deep=roleHex(k,'profond');const acc=k==='groupe'?'#F5F4F0':roleHex(k,'accent');const L=logoSet(k);
     const imgD=L.dark||'', imgL=L.light||'';
     return `<div class="tile card" style="display:flex;flex-direction:column;gap:14px">
       <div style="background:${deep};border-radius:14px;padding:22px;display:grid;place-items:center;min-height:88px">
@@ -1837,13 +1839,13 @@ function edBodyHTML(){
       <div class="tile ed-card" id="edCheck">${checkHTML(k)}</div>`;
   }
   if(edTab==='logos'){
-    const L=draft.logos[k]||{light:'',dark:''}; const deep=roleHex(k,'profond',draft);
+    const L=logoSet(k,draft), own=draft.logos[k]||{}, D=DEFAULTS.logos[k]||{}; const deep=roleHex(k,'profond',draft);
     return `${brandSegHTML('edBrand')}
       <p class="ed-note">SVG recommandé, PNG ou WebP acceptés, 5 Mo maximum. Le logo s'affiche sur 36 px de haut dans la barre de navigation.</p>
       ${[['light','Sur fond clair','#F5F4F0'],['dark','Sur fond sombre',mixHex(deep,'#05070A',.58)]].map(([v,l,bg])=>`<div class="tile ed-card"><span class="label">${l}</span>
         <div class="ed-logo" style="background:${bg}">${L[v]?`<img src="${esc(L[v])}" alt="Logo ${l.toLowerCase()}">`:`<span style="color:${v==='dark'?'rgba(255,255,255,.72)':'#5B636A'}">Logo généré par défaut</span>`}</div>
         <p class="msg" data-msg="${v}"></p>
-        <div class="btn-row"><label class="btn ghost sm file-btn">${L[v]?'Remplacer':'Importer un logo'}<input type="file" accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp" data-f="logo" data-v="${v}"></label>${L[v]?`<button class="btn text sm" data-ed="logo-del" data-v="${v}">Retirer</button>`:''}</div></div>`).join('')}`;
+        <div class="btn-row"><label class="btn ghost sm file-btn">${L[v]?'Remplacer':'Importer un logo'}<input type="file" accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp" data-f="logo" data-v="${v}"></label>${own[v]&&own[v]!==D[v]?`<button class="btn text sm" data-ed="logo-del" data-v="${v}">${D[v]?'Revenir au logo officiel':'Retirer'}</button>`:''}</div></div>`).join('')}`;
   }
   return `<datalist id="fontList">${FONT_SUGG.map(f=>`<option value="${f}"></option>`).join('')}</datalist>
     <p class="ed-note">La charte prévoit Poppins pour toutes les marques. Saisissez le nom d'une police Google Fonts ou importez un fichier (WOFF2, WOFF, TTF, OTF).</p>
