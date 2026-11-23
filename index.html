@@ -225,6 +225,15 @@ html[data-theme="dark"] .sh{filter:blur(80px)}
 .ed-note{font-size:12.5px;color:var(--muted);line-height:1.5}
 .ed-warn{font-size:12.5px;color:var(--err);display:flex;flex-direction:column;gap:4px}
 .ed-ok{font-size:12.5px;color:var(--ok)}
+.ed-card textarea.input{min-height:84px;padding:10px 12px;font-size:14px;border-radius:12px;line-height:1.5}
+.ed-card .field > span{font-size:12px;color:var(--muted)}
+.ed-card .num{margin:0;flex:none;min-width:22px}
+.ed-tools{display:flex;gap:6px;flex:none}
+.ed-tools .icon-btn{width:36px;height:36px}
+.icon-btn:disabled{opacity:.35;pointer-events:none}
+.ed-count{font-size:12.5px;color:var(--muted)}
+#edTabs{align-self:stretch!important}
+#edTabs > button{flex:1 0 auto;justify-content:center;padding:0 12px}
 .ed-logo{border-radius:14px;min-height:110px;display:grid;place-items:center;padding:20px;border:1px solid var(--hair)}
 .ed-logo img{max-height:56px;max-width:100%;object-fit:contain}
 .ed-logo span{font-size:12.5px}
@@ -416,6 +425,22 @@ html[data-theme="dark"] .mk .bl.soft{background:var(--action)}
 .law h3{font-size:16px}
 .law p{font-size:13.5px;color:var(--muted)}
 .law .app{font-size:13.5px;color:var(--text);padding-top:10px;border-top:1px solid var(--hair)}
+.cw{padding:22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.cw-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;min-width:0}
+.cw-head h3{font-size:17px;min-width:0;overflow-wrap:anywhere}
+.cw-head .pill{flex:none}
+.cw > p{font-size:13.5px;color:var(--muted)}
+.cw ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:cw}
+.cw ol li{display:flex;flex-direction:column;gap:2px;padding-left:34px;position:relative;font-size:13.5px;color:var(--text);min-width:0;counter-increment:cw}
+.cw ol li::before{content:counter(cw);position:absolute;left:0;top:1px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:11.5px;font-weight:600;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--link)}
+.cw ol li b{font-size:13px;font-weight:600;color:var(--head);overflow-wrap:anywhere}
+.cw ol li span{color:var(--muted);overflow-wrap:anywhere}
+.cw .app{font-size:13.5px;color:var(--text);padding-top:10px;border-top:1px solid var(--hair);overflow-wrap:anywhere}
+.cw .warn{font-size:13px;color:var(--text);padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--err) 8%,transparent);border:1px solid color-mix(in srgb,var(--err) 22%,transparent);overflow-wrap:anywhere}
+.cw .warn b{color:var(--err);font-weight:600;margin-right:4px}
+.law h3,.law p,.card h3,.card p{overflow-wrap:anywhere}
+.empty-st{padding:28px;text-align:center;color:var(--muted);font-size:14px;grid-column:1/-1}
+.head-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
 
 /* do / dont */
 .dd{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -676,7 +701,7 @@ html[data-theme="dark"] .mk .bl.soft{background:var(--action)}
 
       <div class="panel glass" data-st>
         <div class="panel-head"><div><span class="label">Règles d'or</span><h2 style="margin-top:6px">Ce qui ne se négocie jamais</h2></div>
-          <button class="btn ghost sm mag" data-go="regles" data-sub-target="or">Voir les huit règles</button></div>
+          <button class="btn ghost sm mag" data-go="regles" data-sub-target="or" id="goldAll">Voir les huit règles</button></div>
         <div class="grid g3" id="goldTop"></div>
       </div>
     </section>
@@ -721,13 +746,14 @@ html[data-theme="dark"] .mk .bl.soft{background:var(--action)}
     <!-- REGLES -->
     <section class="view" id="v-regles" data-view="regles" hidden>
       <div class="page-head glass" data-st>
-        <div class="txt"><span class="label">Règles</span><h1 style="margin-top:8px">Exigences et lois de l'UX</h1>
-          <p>Les règles communes à toutes les marques, les lois de l'expérience utilisateur appliquées chez Hympyr, la rédaction et le quiz de validation.</p></div>
+        <div class="txt"><span class="label">Règles</span><h1 style="margin-top:8px">Exigences, lois de l'UX et copywriting</h1>
+          <p>Les règles communes à toutes les marques, les lois de l'expérience utilisateur et les techniques de copywriting appliquées chez Hympyr, la rédaction et le quiz de validation.</p></div>
         <div class="sub-wrap"><div class="seg glass glide scroll" data-sub-nav="regles"></div></div>
       </div>
       <div class="subpanel" data-sub="or" data-st></div>
       <div class="subpanel" data-sub="ux" data-st hidden></div>
       <div class="subpanel" data-sub="redaction" data-st hidden></div>
+      <div class="subpanel" data-sub="copy" data-st hidden></div>
       <div class="subpanel" data-sub="quiz" data-st hidden></div>
     </section>
 
@@ -791,6 +817,9 @@ const I={
   book:'<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/><path d="M9 7.5h6"/>',
   check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  up:'<path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/>',
+  down:'<path d="M12 5v14M18.5 12.5 12 19l-6.5-6.5"/>',
+  edit:'<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
   copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>',
   arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
   left:'<path d="M19 12H5M11 6l-6 6 6 6"/>',
@@ -846,7 +875,7 @@ const TABS=[
 const SUBS={
   identite:[['couleurs','Couleurs'],['typo','Typographie'],['logo','Logotype'],['espaces','Espacements']],
   composants:[['verre','Verre dépoli'],['boutons','Boutons'],['champs','Champs'],['nav','Navigation'],['mouvement','Mouvement']],
-  regles:[['or','Règles d\'or'],['ux','Lois UX'],['redaction','Rédaction'],['quiz','Quiz']]
+  regles:[['or','Règles d\'or'],['ux','Lois UX'],['redaction','Rédaction'],['copy','Copywriting'],['quiz','Quiz']]
 };
 const SECTIONS=[
   ...SUBS.identite.map(s=>'identite:'+s[0]),
@@ -857,14 +886,14 @@ const SECTIONS=[
 const LEVELS=[[0,'Découverte'],[25,'Initié'],[50,'Confirmé'],[75,'Expert'],[100,'Ambassadeur']];
 
 const GOLD=[
-  ['Fluidité absolue','Aucune saccade, aucune transition brute, jamais, nulle part. Tout changement d\'interface s\'anime avec douceur.'],
-  ['Chaque élément dans son encart','Aucun texte, bouton ou fond ne chevauche deux encarts, ni un encart et l\'arrière-plan.'],
-  ['Des encarts qui respirent','Les encarts ne se touchent jamais. Textes, champs et blocs suivent la même échelle d\'espacement.'],
-  ['Les lois de l\'UX comme socle','Jakob, Hick, Fitts, Pareto, Miller et les autres guident chaque arbitrage d\'interface.'],
-  ['Gamification systématique','Application, site, fonctionnalité ou carrousel : chaque production engage par la progression et la récompense.'],
-  ['Simple pour tous, complet pour chacun','Compris par les personnes les moins familières du numérique, sans amputer la richesse de l\'outil.'],
-  ['Précision maniaque','Survol, appui, focus, chargement, erreur, succès, transitions : rien n\'est laissé au hasard.'],
-  ['Charte respectée à la lettre','Poppins, palettes de marque, verre dépoli et rythme d\'espacement, sans exception.']
+  {t:'Fluidité absolue',d:'Aucune saccade, aucune transition brute, jamais, nulle part. Tout changement d\'interface s\'anime avec douceur.'},
+  {t:'Chaque élément dans son encart',d:'Aucun texte, bouton ou fond ne chevauche deux encarts, ni un encart et l\'arrière-plan.'},
+  {t:'Des encarts qui respirent',d:'Les encarts ne se touchent jamais. Textes, champs et blocs suivent la même échelle d\'espacement.'},
+  {t:'Les lois de l\'UX comme socle',d:'Jakob, Hick, Fitts, Pareto, Miller et les autres guident chaque arbitrage d\'interface.'},
+  {t:'Gamification systématique',d:'Application, site, fonctionnalité ou carrousel : chaque production engage par la progression et la récompense.'},
+  {t:'Simple pour tous, complet pour chacun',d:'Compris par les personnes les moins familières du numérique, sans amputer la richesse de l\'outil.'},
+  {t:'Précision maniaque',d:'Survol, appui, focus, chargement, erreur, succès, transitions : rien n\'est laissé au hasard.'},
+  {t:'Charte respectée à la lettre',d:'Poppins, palettes de marque, verre dépoli et rythme d\'espacement, sans exception.'}
 ];
 
 const LAWS=[
@@ -886,6 +915,44 @@ const LAWS=[
   {c:'memoire',n:'Charge cognitive',p:'Chaque élément superflu consomme une part de l\'attention disponible.',a:'Aucune mention inutile, aucun texte de remplissage, un message par bloc.'}
 ];
 const LAW_CATS=[['tout','Toutes'],['decision','Décision'],['perception','Perception'],['memoire','Mémoire et motivation']];
+/* Techniques de copywriting : source Adimeo (adimeo.com/blog/techniques-copywriting), adaptées au contexte Hympyr */
+const COPY_CATS=[['tout','Toutes'],['parcours','Parcours de conversion'],['argument','Argumentaire'],['court','Formats courts'],['levier','Leviers']];
+const COPY=[
+  {c:'parcours',n:"AIDA : Attention, Intérêt, Désir, Action",p:"Accompagner le lecteur à travers les quatre étapes psychologiques qui précèdent une décision d'achat.",
+   s:[["Attention","Un titre qui nomme le problème du lecteur."],["Intérêt","Des informations utiles, des exemples concrets, des témoignages."],["Désir","Ce qui rend l'offre unique et adaptée à sa situation."],["Action","Un appel à l'action clair qui lève la dernière objection."]],
+   a:"Pages produit et boutique granulés. Exemple : « Votre poêle tourne déjà tous les soirs ? » · PiveteauBois et Les granulés de nos Régions, en palettes de 72 sacs ou en vrac · paiement en 4 fois sans frais · « Commander une palette ».",w:""},
+  {c:'parcours',n:"BAB : Before, After, Bridge",p:"Faire visualiser l'écart entre la situation actuelle du lecteur et celle qu'il souhaite, puis montrer le chemin.",
+   s:[["Before","Décrire le problème tel que le lecteur le vit, avec empathie."],["After","Montrer la situation une fois l'offre adoptée : avantages, exemples, témoignages."],["Bridge","Relier les deux par l'offre, puis conclure par un appel à l'action."]],
+   a:"Contenus de conseil et carrousels. Exemple : avant, des sacs achetés au détail chaque semaine ; après, une palette livrée devant chez soi ; le pont, la commande en ligne en quelques minutes.",w:""},
+  {c:'parcours',n:"PAS : Problème, Agitation, Solution",p:"Nommer le problème, en montrer les conséquences, puis présenter la solution.",
+   s:[["Problème","Identifier le problème central que l'offre résout."],["Agitation","Rendre tangibles les conséquences de ce problème pour le lecteur."],["Solution","Présenter l'offre comme la réponse crédible, preuves à l'appui."]],
+   a:"Offres professionnelles : GNR, gasoil routier, AdBlue. Exemple : une cuve vide en pleine saison · une journée d'activité à l'arrêt · une livraison programmée dès 200 L de GNR.",
+   w:"Agitation factuelle et mesurée : des conséquences réelles, jamais de peur fabriquée. Le ton Hympyr reste chaleureux."},
+  {c:'parcours',n:"Q.U.E.S.T : Qualify, Understand, Educate, Stimulate, Transition",p:"Une approche centrée sur le lecteur, fondée sur l'empathie plutôt que sur le produit.",
+   s:[["Qualify","Signaler à qui s'adresse le contenu, par une question ou une situation."],["Understand","Montrer que le problème est compris, en termes concrets."],["Educate","Expliquer l'offre, ses avantages et ses preuves : témoignages, cas, démonstrations."],["Stimulate","Faire ressortir la valeur ajoutée : garanties, services, conditions."],["Transition","Résumer l'essentiel, puis proposer l'action."]],
+   a:"Articles de blog et guides pratiques, par exemple sur les aides GNR. Exemple : « Exploitant agricole, vous consommez du GNR ? », puis le dispositif expliqué, et la demande de devis en conclusion.",w:""},
+  {c:'argument',n:"FAB : Fonctionnalités, Avantages, Bénéfices",p:"Passer de la description du produit à ce qu'il change concrètement pour le client.",
+   s:[["Fonctionnalités","Ce que l'offre est ou fait, et ce qui la distingue."],["Avantages","En quoi elle répond mieux au problème que les alternatives."],["Bénéfices","Ce que le client y gagne au quotidien."]],
+   a:"Fiches produit et pages de service. Exemple AdBlue : livraison dès 1 000 L sur votre site · un même fournisseur pour le gasoil routier et l'AdBlue · des véhicules qui ne s'arrêtent pas faute d'AdBlue.",w:""},
+  {c:'parcours',n:"PASTOR",p:"Six étapes qui conduisent le prospect du problème jusqu'à l'action.",
+   s:[["Problème","Capter l'attention avec un problème précis, dès le titre."],["Amplification","Décrire ce qui arrive si le problème n'est pas traité."],["Solution","Présenter l'offre et ce qui la rend unique."],["Transformation","Installer la confiance par des témoignages et des cas clients."],["Offre","Détailler ce qui est proposé et lever les objections."],["Réponse","Un appel à l'action unique : commander, demander un devis, s'inscrire."]],
+   a:"Pages de destination des campagnes payantes, par exemple la campagne Google Ads granulés vers la boutique en ligne.",
+   w:"Témoignages et avis réels uniquement, avec l'accord des clients cités. Un avis inventé est une pratique commerciale trompeuse."},
+  {c:'court',n:"Les 3 raisons",p:"Répondre en peu de mots aux trois questions que se pose tout prospect. Réservée aux contenus courts.",
+   s:[["Pourquoi cette offre ?","Elle résout le problème, preuve à l'appui."],["Pourquoi nous faire confiance ?","Références, avis clients, présence locale."],["Pourquoi maintenant ?","Un avantage ou une échéance réels."]],
+   a:"Posts, slides de carrousel, encarts et e-mails courts. Exemple : livraison dans sept départements d'Occitanie · une entreprise familiale ancrée dans la région · commander avant les pics de demande de l'hiver.",w:""},
+  {c:'levier',n:"FOMO : Fear of Missing Out",p:"S'appuyer sur la peur de manquer une opportunité limitée pour déclencher l'action. Le désir et l'action naissent ensemble, là où AIDA procède par étapes.",
+   s:[["Accroche","Un titre qui suscite un intérêt immédiat."],["Valeur","Les avantages et bénéfices de l'offre."],["Limite","L'échéance ou la quantité, réelle et vérifiable."],["Objections","Les réponses aux freins éventuels."]],
+   a:"Offres saisonnières datées et annonces d'échéances réelles. Exemple : une offre valable jusqu'à une date précise, annoncée avec cette date.",
+   w:"Uniquement une rareté ou une échéance réelles. Faux compte à rebours, stock limité inventé, offre « dernière chance » reconduite : pratiques commerciales trompeuses au sens du Code de la consommation."},
+  {c:'argument',n:"5W1H : Who, What, Where, When, Why, How",p:"Couvrir l'offre sous six angles en répondant à six questions. Particulièrement adaptée aux pages de destination.",
+   s:[["Qui","À qui s'adresse l'offre, pour que le lecteur s'y reconnaisse."],["Quoi","Le produit ou le service, clairement, avec ses avantages."],["Où","La prochaine étape : formulaire, boutique, téléphone."],["Quand","Disponibilité, délais, saisonnalité."],["Pourquoi","Les raisons décisives de choisir l'offre : l'étape la plus importante."],["Comment","Le fonctionnement concret, pour rassurer."]],
+   a:"Pages de service du site. Exemple GNR : entreprises agricoles et du BTP · livraison dès 200 L · demande de devis en ligne · délais · raisons de choisir Hympyr · déroulé d'une livraison. Le « Qui » rappelle que GNR, gasoil routier et AdBlue sont réservés aux professionnels et aux collectivités.",w:""},
+  {c:'parcours',n:"4P : Promise, Picture, Proof, Push",p:"Une méthode qui fonctionne à l'écrit, en audio comme en vidéo.",
+   s:[["Promise","Une promesse claire : titre ou proposition de valeur."],["Picture","Une image concrète de la vie avec l'offre : récit, photo, scène."],["Proof","Des preuves qui répondent aux objections : témoignages, cas, chiffres."],["Push","Un appel à l'action qui donne envie d'agir tout de suite."]],
+   a:"Vidéos verticales, publicités et présentations. Exemple de vidéo : la promesse en titre · un chauffeur en livraison · un avis client réel · « Demander un devis ».",w:""}
+];
+
 
 const CREAS={
   outil:{t:'Outils & applications',i:'monitor',prio:'Ordinateur d\'abord, mobile soigné',
@@ -985,7 +1052,8 @@ BRAND_KEYS.forEach(k=>BRANDS[k].colors.forEach((c,i)=>c.r=[...(DEFAULT_ROLES[k][
 const DEFAULTS={
   brands:Object.fromEntries(BRAND_KEYS.map(k=>[k,{colors:clone(BRANDS[k].colors)}])),
   logos:{energies:{light:'assets/hympyr-energies-fonce.svg',dark:'assets/hympyr-energies-clair.svg'}},
-  fonts:{titres:{family:'Poppins',src:'google'},texte:{family:'Poppins',src:'google'}}
+  fonts:{titres:{family:'Poppins',src:'google'},texte:{family:'Poppins',src:'google'}},
+  rules:{gold:clone(GOLD),laws:clone(LAWS),copy:clone(COPY)}
 };
 let CONF=clone(DEFAULTS), ACT=CONF, CONF_META=null;
 function normConf(d){
@@ -997,6 +1065,14 @@ function normConf(d){
     if(l){const dflt=DEFAULTS.logos[k]||{};c.logos[k]={light:/^https:\/\//.test(l.light||'')?l.light:(dflt.light||''),dark:/^https:\/\//.test(l.dark||'')?l.dark:(dflt.dark||'')}}});
   ['titres','texte'].forEach(t=>{const f=d.fonts&&d.fonts[t];
     if(f&&f.family) c.fonts[t]={family:String(f.family).replace(/["'<>;{}\\]/g,'').trim().slice(0,60)||'Poppins',src:(f.src==='google'||/^https:\/\//.test(f.src||''))?f.src:'google'}});
+  if(d.rules&&typeof d.rules==='object'){
+    const R=d.rules, T=(v,n)=>String(v??'').trim().slice(0,n);
+    const okCat=(cats,v,dflt)=>cats.some(k=>k[0]===v&&k[0]!=='tout')?v:dflt;
+    if(Array.isArray(R.gold)) c.rules.gold=R.gold.filter(x=>x&&T(x.t,80)).map(x=>({t:T(x.t,80),d:T(x.d,400)}));
+    if(Array.isArray(R.laws)) c.rules.laws=R.laws.filter(x=>x&&T(x.n,80)).map(x=>({c:okCat(LAW_CATS,x.c,'decision'),n:T(x.n,80),p:T(x.p,400),a:T(x.a,400)}));
+    if(Array.isArray(R.copy)) c.rules.copy=R.copy.filter(x=>x&&T(x.n,80)).map(x=>({c:okCat(COPY_CATS,x.c,'parcours'),n:T(x.n,80),p:T(x.p,600),
+      s:Array.isArray(x.s)?x.s.filter(y=>Array.isArray(y)&&T(y[0],60)).slice(0,8).map(y=>[T(y[0],60),T(y[1],300)]):[],a:T(x.a,700),w:T(x.w,400)}));
+  }
   return c;
 }
 function logoSet(k,conf=ACT){const L=conf.logos[k]||{},D=DEFAULTS.logos[k]||{};return {light:L.light||D.light||'',dark:L.dark||D.dark||''}}
@@ -1301,7 +1377,9 @@ function renderHome(){
     <span class="uni-strip">${b.colors.map(c=>`<i style="background:${c.h}"></i>`).join('')}</span>
     <span class="row"><b>${b.nom}</b><span class="chk">${ic('check')}</span></span><span>${b.desc}</span></button>`}).join('');
   $('#uniCards').onclick=e=>{const c=e.target.closest('[data-brand]'); if(c) setBrand(c.dataset.brand)};
-  $('#goldTop').innerHTML=GOLD.slice(0,3).map((g,i)=>`<div class="tile card"><span class="num">0${i+1}</span><h3>${g[0]}</h3><p>${g[1]}</p></div>`).join('');
+  const G=ACT.rules.gold;
+  $('#goldTop').innerHTML=G.length?G.slice(0,3).map((g,i)=>`<div class="tile card"><span class="num">${two(i+1)}</span><h3>${esc(g.t)}</h3><p>${esc(g.d)}</p></div>`).join(''):'<p class="empty-st">Aucune règle d\'or définie.</p>';
+  $('#goldAll').textContent=G.length===1?'Voir la règle':`Voir les ${nbTxt(G.length)} règles`;
 }
 
 /* =========================================================
@@ -1643,17 +1721,41 @@ function renderComp(){
 /* =========================================================
    RENDER : REGLES
    ========================================================= */
-let lawCat='tout';
-function lawsHTML(){return LAWS.filter(l=>lawCat==='tout'||l.c===lawCat).map(l=>`<div class="tile law"><h3>${l.n}</h3><p>${l.p}</p><div class="app"><span class="label" style="display:block;margin-bottom:4px;font-size:10.5px">Chez Hympyr</span>${l.a}</div></div>`).join('')}
-function renderRules(){
-  $('[data-sub="or"]').innerHTML=`<div class="panel glass"><div class="panel-head"><div><span class="label">Toutes les marques · print et numérique</span><h2 style="margin-top:6px">Les huit règles d'or</h2>
-    <p>Une production qui enfreint l'une de ces règles n'est pas livrable.</p></div></div>
-    <div class="grid g4">${GOLD.map((g,i)=>`<div class="tile card"><span class="num">0${i+1}</span><h3>${g[0]}</h3><p>${g[1]}</p></div>`).join('')}</div></div>`;
+let lawCat='tout', copyCat='tout';
+const two=n=>String(n).padStart(2,'0');
+const NB=['zéro','une','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze'];
+const nbTxt=n=>NB[n]||String(n);
+const catName=(cats,k)=>(cats.find(c=>c[0]===k)||['',''])[1];
+function editRulesBtn(k){return canEdit?`<button class="btn ghost sm mag" data-edit-rules="${k}">${ic('edit')}Modifier</button>`:''}
+function lawsHTML(){const L=ACT.rules.laws.filter(l=>lawCat==='tout'||l.c===lawCat);
+  if(!L.length) return '<p class="empty-st">Aucune loi dans cette catégorie.</p>';
+  return L.map(l=>`<div class="tile law"><h3>${esc(l.n)}</h3><p>${esc(l.p)}</p>${l.a?`<div class="app"><span class="label" style="display:block;margin-bottom:4px;font-size:10.5px">Chez Hympyr</span>${esc(l.a)}</div>`:''}</div>`).join('')}
+function copyHTML(){const L=ACT.rules.copy.filter(c=>copyCat==='tout'||c.c===copyCat);
+  if(!L.length) return '<p class="empty-st">Aucune technique dans cette catégorie.</p>';
+  return L.map(c=>`<div class="tile cw"><div class="cw-head"><h3>${esc(c.n)}</h3><span class="pill">${esc(catName(COPY_CATS,c.c))}</span></div>
+    ${c.p?`<p>${esc(c.p)}</p>`:''}
+    ${c.s.length?`<ol>${c.s.map(([t,d])=>`<li><b>${esc(t)}</b>${d?`<span>${esc(d)}</span>`:''}</li>`).join('')}</ol>`:''}
+    ${c.a?`<div class="app"><span class="label" style="display:block;margin-bottom:4px;font-size:10.5px">Chez Hympyr</span>${esc(c.a)}</div>`:''}
+    ${c.w?`<div class="warn"><b>Vigilance</b>${esc(c.w)}</div>`:''}</div>`).join('')}
+function renderRuleLists(){
+  const G=ACT.rules.gold;
+  $('[data-sub="or"]').innerHTML=`<div class="panel glass"><div class="panel-head"><div><span class="label">Toutes les marques · print et numérique</span><h2 style="margin-top:6px">${G.length===1?'La règle d\'or':`Les ${nbTxt(G.length)} règles d'or`}</h2>
+    <p>Une production qui enfreint l'une de ces règles n'est pas livrable.</p></div>${editRulesBtn('or')}</div>
+    <div class="grid g4">${G.length?G.map((g,i)=>`<div class="tile card"><span class="num">${two(i+1)}</span><h3>${esc(g.t)}</h3><p>${esc(g.d)}</p></div>`).join(''):'<p class="empty-st">Aucune règle d\'or définie.</p>'}</div></div>`;
   $('[data-sub="ux"]').innerHTML=`<div class="panel glass"><div class="panel-head"><div><span class="label">Référence</span><h2 style="margin-top:6px">Lois de l'UX appliquées</h2>
     <p>Chaque loi, traduite en décision concrète pour nos outils et contenus. Référence complète sur <a href="https://lawsofux.com/fr/" target="_blank" rel="noopener">lawsofux.com/fr</a>.</p></div>
-    <div class="seg glass glide scroll" id="lawSeg"></div></div>
+    <div class="head-tools"><div class="seg glass glide scroll" id="lawSeg"></div>${editRulesBtn('ux')}</div></div>
     <div class="grid g4" id="lawGrid">${lawsHTML()}</div></div>`;
   seg($('#lawSeg'),LAW_CATS,lawCat,v=>{lawCat=v;swap($('#lawGrid'),lawsHTML())});
+  $('[data-sub="copy"]').innerHTML=`<div class="panel glass"><div class="panel-head"><div><span class="label">Rédaction persuasive</span><h2 style="margin-top:6px">Techniques de copywriting</h2>
+    <p>Des structures éprouvées pour écrire des pages, posts et vidéos qui convainquent, dans le respect du ton Hympyr : direct, précis, chaleureux. Référence : <a href="https://www.adimeo.com/blog/techniques-copywriting" target="_blank" rel="noopener">Adimeo</a>.</p></div>
+    <div class="head-tools"><div class="seg glass glide scroll" id="copySeg"></div>${editRulesBtn('copy')}</div></div>
+    <div class="grid g2" id="copyGrid">${copyHTML()}</div></div>`;
+  seg($('#copySeg'),COPY_CATS,copyCat,v=>{copyCat=v;swap($('#copyGrid'),copyHTML())});
+  initInteractive($('#v-regles'));
+}
+function renderRules(){
+  renderRuleLists();
   $('[data-sub="redaction"]').innerHTML=`<div class="grid g2">
     <div class="panel glass"><span class="label">Ton</span><h2 style="margin:6px 0 20px">Direct, précis, chaleureux</h2><ul class="checks">
       <li><span class="tk no">${ic('x')}</span><span>Aucun emoji, dans aucune création : outil, site, carrousel, présentation ou e-mail.</span></li>
@@ -1786,6 +1888,7 @@ function renderBrandDependent(){
   $$('#univers button[data-v]').forEach(b=>{const d=$('.dot',b);if(d)d.style.background=roleHex(b.dataset.v,b.dataset.v==='groupe'?'action':'accent')});
   if($('#creaBody').innerHTML){ $('#stageView')&&($('#stageView').innerHTML=mockHTML()); $('.stage .label')&&($('.stage .label').textContent='Aperçu · '+BRANDS[root.dataset.brand].nom); }
   if($('[data-sub="nav"]').innerHTML) renderComp();
+  if($('[data-sub="or"]').innerHTML) renderRuleLists();
   initInteractive();
 }
 
@@ -1808,7 +1911,7 @@ function edStatus(){
   sv.disabled=!isDirty();
 }
 let prevRaf;
-function preview(){cancelAnimationFrame(prevRaf);prevRaf=requestAnimationFrame(()=>{applyConfig(draft);renderBrandDependent();edStatus()})}
+function preview(){cancelAnimationFrame(prevRaf);prevRaf=requestAnimationFrame(()=>{applyConfig(draft);if(edTab==='regles'){renderHome();renderRuleLists()}else renderBrandDependent();edStatus()})}
 function brandSegHTML(id){return `<div class="seg glass glide scroll" id="${id}" style="background:var(--glass);align-self:flex-start"></div>`}
 function colorCard(c,i){
   return `<div class="tile ed-card" data-i="${i}">
@@ -1829,7 +1932,88 @@ function checkHTML(k){
     <span class="ed-note">Texte blanc sur la couleur Action : <b>${fr(rr)}:1</b> · ${grade(rr)}${rr<4.5?'. Contraste insuffisant pour des boutons.':''}</span>
     <span class="ed-note">Profond : titres et fonds sombres. Action : boutons et liens. Accent : logo et pictogrammes. Clair : fonds clairs et cartes.</span>`;
 }
+
+/* ---- Editor : règles d'or, lois UX, copywriting ---- */
+const RULE_SETS=[['or','Règles d\'or'],['ux','Lois UX'],['copy','Copywriting']];
+const RULE_KEY={or:'gold',ux:'laws',copy:'copy'};
+const RULE_TITLE={or:'t',ux:'n',copy:'n'};
+const RULE_LIM={t:80,d:400,n:80,p:400,a:400,w:400};
+const RULE_NEW={
+  or:()=>({t:'Nouvelle règle',d:''}),
+  ux:()=>({c:'decision',n:'Nouvelle loi',p:'',a:''}),
+  copy:()=>({c:'parcours',n:'Nouvelle technique',p:'',s:[],a:'',w:''})
+};
+let edRule='or';
+const ruleList=()=>draft.rules[RULE_KEY[edRule]];
+const stepsTxt=s=>s.map(([t,d])=>d?`${t} : ${d}`:t).join('\n');
+function parseSteps(v){return v.split('\n').map(l=>l.trim()).filter(Boolean).slice(0,8).map(l=>{const i=l.indexOf(':');return i<0?[l.slice(0,60),'']:[l.slice(0,i).trim().slice(0,60),l.slice(i+1).trim().slice(0,300)]}).filter(x=>x[0])}
+function catPills(cats,v){return `<div class="roles" role="group" aria-label="Catégorie">${cats.filter(c=>c[0]!=='tout').map(([k,l])=>`<button type="button" class="role ${v===k?'on':''}" data-rc="${k}" aria-pressed="${v===k}">${l}</button>`).join('')}</div>`}
+function ruleCard(r,i,n){
+  const tf=RULE_TITLE[edRule], title=r[tf]||'';
+  const tools=`<div class="ed-tools"><button type="button" class="icon-btn" data-rx="up" aria-label="Monter" ${i===0?'disabled':''}>${ic('up')}</button><button type="button" class="icon-btn" data-rx="down" aria-label="Descendre" ${i===n-1?'disabled':''}>${ic('down')}</button><button type="button" class="icon-btn" data-rx="del" aria-label="Supprimer ${esc(title)}">${ic('x')}</button></div>`;
+  const head=`<div class="ed-row"><span class="num">${two(i+1)}</span><input class="input${title.trim()?'':' bad'}" data-r="${tf}" value="${esc(title)}" maxlength="80" placeholder="Titre" aria-label="Titre" style="flex:1">${tools}</div>`;
+  const ta=(f,l,ph,max)=>`<label class="field"><span>${l}</span><textarea class="input" data-r="${f}" maxlength="${max}" placeholder="${ph}">${esc(r[f])}</textarea></label>`;
+  if(edRule==='or') return `<div class="tile ed-card" data-ri="${i}">${head}${ta('d','Description','Ce que la règle impose',400)}</div>`;
+  if(edRule==='ux') return `<div class="tile ed-card" data-ri="${i}">${head}${catPills(LAW_CATS,r.c)}${ta('p','Principe','Énoncé de la loi',400)}${ta('a','Chez Hympyr','Traduction concrète dans nos productions',400)}</div>`;
+  return `<div class="tile ed-card" data-ri="${i}">${head}${catPills(COPY_CATS,r.c)}${ta('p','Principe','Ce que vise la technique',600)}
+    <label class="field"><span>Étapes · une par ligne, au format « Étape : description » (8 maximum)</span><textarea class="input" data-r="s" style="min-height:140px" placeholder="Attention : un titre qui nomme le problème">${esc(stepsTxt(r.s))}</textarea></label>
+    ${ta('a','Chez Hympyr','Usages recommandés et exemple',700)}${ta('w','Vigilance (facultatif)','Limite légale ou de ton à respecter',400)}</div>`;
+}
+function ruleListHTML(){const L=ruleList();return L.length?L.map((r,i)=>ruleCard(r,i,L.length)).join(''):'<p class="ed-note">Aucun élément. Ajoutez-en un pour commencer.</p>'}
+function rulesBodyHTML(){
+  const L=ruleList(), lab={or:'règle',ux:'loi',copy:'technique'}[edRule];
+  return `<div class="seg glass glide scroll" id="edRule" style="background:var(--glass);align-self:flex-start"></div>
+    <p class="ed-note">Ajoutez, modifiez, réordonnez ou supprimez des éléments. L'aperçu est immédiat ; l'équipe voit les changements après enregistrement. Le texte est affiché tel quel, sans mise en forme.</p>
+    <span class="ed-count" id="edRuleCount">${L.length} ${lab}${L.length>1?'s':''}</span>
+    <div id="edRuleList" style="display:flex;flex-direction:column;gap:12px">${ruleListHTML()}</div>
+    <div class="btn-row"><button class="btn ghost sm" data-rx="add">Ajouter une ${lab}</button><button class="btn text sm" data-rx="reset">Rétablir la version d'origine</button></div>`;
+}
+function refreshRuleList(after){
+  const L=ruleList(), lab={or:'règle',ux:'loi',copy:'technique'}[edRule], c=$('#edRuleCount');
+  if(c) c.textContent=`${L.length} ${lab}${L.length>1?'s':''}`;
+  swap($('#edRuleList'),ruleListHTML(),{y:6,after});
+}
+function onRuleInput(e){
+  const f=e.target.dataset.r; if(!f||!draft) return;
+  const card=e.target.closest('[data-ri]'); if(!card) return;
+  const it=ruleList()[+card.dataset.ri]; if(!it) return;
+  if(f==='s') it.s=parseSteps(e.target.value); else it[f]=e.target.value.slice(0,RULE_LIM[f]||400);
+  if(f===RULE_TITLE[edRule]) e.target.classList.toggle('bad',!e.target.value.trim());
+  pendingClose=false; preview();
+}
+function onRuleClick(e){
+  if(!draft) return false;
+  const cb=e.target.closest('[data-rc]');
+  if(cb){const card=cb.closest('[data-ri]');const it=ruleList()[+card.dataset.ri];if(!it) return true;it.c=cb.dataset.rc;
+    $$('[data-rc]',card).forEach(b=>{const on=b.dataset.rc===it.c;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});
+    pendingClose=false; preview(); return true}
+  const b=e.target.closest('[data-rx]'); if(!b) return false;
+  const act=b.dataset.rx, L=ruleList(); pendingClose=false;
+  if(act==='add'){L.push(RULE_NEW[edRule]());preview();
+    refreshRuleList(el=>{const last=el.lastElementChild;if(last){last.scrollIntoView({block:'nearest',behavior:RM?'auto':'smooth'});const inp=$('[data-r]',last);if(inp){inp.focus({preventScroll:true});inp.select()}}});return true}
+  if(act==='reset'){draft.rules[RULE_KEY[edRule]]=clone(DEFAULTS.rules[RULE_KEY[edRule]]);preview();refreshRuleList();toast('Version d\'origine rétablie. Enregistrez pour la publier.');return true}
+  const card=b.closest('[data-ri]'); if(!card) return true; const i=+card.dataset.ri;
+  if(act==='up'&&i>0){[L[i-1],L[i]]=[L[i],L[i-1]]}
+  else if(act==='down'&&i<L.length-1){[L[i+1],L[i]]=[L[i],L[i+1]]}
+  else if(act==='del'){L.splice(i,1);toast('Élément retiré. « Annuler » le rétablit tant que rien n\'est enregistré.')}
+  else return true;
+  preview(); refreshRuleList(); return true;
+}
+function rulesIssue(d){
+  for(const [k,key,lab] of [['or','gold','Règles d\'or'],['ux','laws','Lois UX'],['copy','copy','Copywriting']]){
+    const i=d.rules[key].findIndex(x=>!String(x[RULE_TITLE[k]]||'').trim());
+    if(i>=0) return `${lab} : l'élément ${i+1} n'a pas de titre.`;
+  }
+  return '';
+}
+function openRulesEditor(k){
+  edRule=k||edRule; edTab='regles';
+  if($('#editor').hidden){openEditor();return}
+  segSet($('#edTabs'),'regles'); swap($('#edBody'),edBodyHTML(),{after:wireEd});
+}
+$('#v-regles').addEventListener('click',e=>{const b=e.target.closest('[data-edit-rules]');if(b&&canEdit) openRulesEditor(b.dataset.editRules)});
 function edBodyHTML(){
+  if(edTab==='regles') return rulesBodyHTML();
   const k=root.dataset.brand;
   if(edTab==='couleurs'){
     return `${brandSegHTML('edBrand')}
@@ -1857,6 +2041,8 @@ function edBodyHTML(){
       <span class="ed-note">${f.src==='google'?'Source : Google Fonts':'Source : fichier importé'}</span></div>`}).join('')}`;
 }
 function wireEd(){
+  const er=$('#edRule');
+  if(er) seg(er,RULE_SETS,edRule,v=>{edRule=v;swap($('#edBody'),edBodyHTML(),{after:wireEd})});
   const eb=$('#edBrand');
   if(eb) seg(eb,BRAND_KEYS.map(k=>[k,BRANDS[k].court,roleHex(k,k==='groupe'?'action':'accent',draft)]),root.dataset.brand,v=>{setBrand(v);swap($('#edBody'),edBodyHTML(),{after:wireEd})},{withDot:true});
 }
@@ -1878,10 +2064,10 @@ function openEditor(){
   if(!canEdit) return;
   draft=clone(CONF); pendingClose=false;
   const ed=$('#editor'); ed.hidden=false; root.classList.add('editing');
-  seg($('#edTabs'),[['couleurs','Couleurs'],['logos','Logos'],['typo','Typographies']],edTab,v=>{edTab=v;swap($('#edBody'),edBodyHTML(),{after:wireEd})});
+  seg($('#edTabs'),[['couleurs','Couleurs'],['logos','Logos'],['typo','Typographies'],['regles','Règles']],edTab,v=>{edTab=v;swap($('#edBody'),edBodyHTML(),{after:wireEd})});
   $('#edBody').innerHTML=edBodyHTML(); wireEd(); edStatus();
   ed.animate([{opacity:0,transform:MOBILE()?'translateY(32px)':'translateX(32px)'},{opacity:1,transform:'none'}],{duration:520,easing:EASE});
-  requestAnimationFrame(()=>{const t=$('#edTabs');place(t._ind,$('button.on',t),true)});
+  requestAnimationFrame(()=>{const t=$('#edTabs'),b=$('button.on',t);place(t._ind,b,true);if(b)t.scrollLeft=b.offsetLeft-(t.clientWidth-b.offsetWidth)/2});
   setTimeout(()=>{$$('.seg,.tabs').forEach(b=>{if(b._ind&&b.offsetParent){const on=$('button.on',b);if(on)place(b._ind,on,false)}})},520);
 }
 async function closeEditor(force){
@@ -1897,11 +2083,14 @@ async function closeEditor(force){
 }
 async function saveEditor(){
   if(!isDirty()) return true;
+  const issue=rulesIssue(draft);
+  if(issue){const st=$('#edStatus');st.className='st';st.style.color='var(--err)';st.textContent=issue+' Complétez-le ou supprimez-le.';return false}
+  const payload=normConf(draft);
   const sv=$('#edSave'); sv.disabled=true; const lbl=sv.textContent; sv.textContent='Enregistrement';
-  const {data,error}=sb?await sb.from('charte_config').upsert({id:1,data:draft,maj_le:new Date().toISOString(),maj_par:user&&user.email}).select('maj_le,maj_par').single():{error:true};
+  const {data,error}=sb?await sb.from('charte_config').upsert({id:1,data:payload,maj_le:new Date().toISOString(),maj_par:user&&user.email}).select('maj_le,maj_par').single():{error:true};
   sv.textContent=lbl;
   if(error){sv.disabled=false;const st=$('#edStatus');st.className='st';st.style.color='var(--err)';st.textContent='Enregistrement impossible. Vérifiez vos droits d\'édition et votre connexion.';return false}
-  CONF=clone(draft); CONF_META={le:data.maj_le,par:data.maj_par}; store.set('hy-conf',CONF);
+  draft=clone(payload); CONF=clone(payload); CONF_META={le:data.maj_le,par:data.maj_par}; store.set('hy-conf',CONF);
   toast('Charte enregistrée pour toute l\'équipe'); edStatus(); return true;
 }
 $('#editBtn').onclick=openEditor;
@@ -1913,6 +2102,7 @@ $('#edCancel').onclick=()=>{
 };
 $('#edSave').onclick=async()=>{const closing=pendingClose;const ok=await saveEditor();if(ok&&closing)closeEditor(true)};
 $('#edBody').addEventListener('input',e=>{
+  if(edTab==='regles'){onRuleInput(e);return}
   const f=e.target.dataset.f; if(!f||!draft) return;
   const card=e.target.closest('[data-i]'); if(!card) return;
   const c=draft.brands[root.dataset.brand].colors[+card.dataset.i]; if(!c) return;
@@ -1926,6 +2116,7 @@ $('#edBody').addEventListener('input',e=>{
   refreshCheck(); preview();
 });
 $('#edBody').addEventListener('click',e=>{
+  if(edTab==='regles'){onRuleClick(e);return}
   if(!draft) return; const k=root.dataset.brand;
   const rb=e.target.closest('[data-role]');
   if(rb){const cs=draft.brands[k].colors;const c=cs[+rb.closest('[data-i]').dataset.i];const r=rb.dataset.role;const had=c.r.includes(r);
