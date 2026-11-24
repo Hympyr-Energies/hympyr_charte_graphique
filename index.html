@@ -348,6 +348,25 @@ main{position:relative;width:100%;max-width:1240px;margin:0 auto;padding:calc(va
 .uni-card:hover{background:var(--tile-hover);transform:translateY(-3px)}
 .uni-card.on{border-color:color-mix(in srgb,var(--link) 55%,transparent);background:var(--tile-hover)}
 .uni-strip{display:flex;height:44px;border-radius:12px;overflow:hidden}
+.pdf-modal{max-width:640px}
+.pdf-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pdf-opt{padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:10px;text-align:left;width:100%;min-width:0;transition:transform .35s var(--ease),background .3s,border-color .3s}
+.pdf-opt:hover{background:var(--tile-hover);transform:translateY(-2px)}
+.pdf-opt.on{border-color:color-mix(in srgb,var(--link) 60%,transparent);background:var(--tile-hover);box-shadow:0 0 0 1px color-mix(in srgb,var(--link) 45%,transparent)}
+.pdf-opt .uni-strip{height:26px;border-radius:8px}
+.pdf-opt b{font-size:14px;color:var(--head);overflow-wrap:anywhere}
+.pdf-opt span.d{font-size:12.5px;color:var(--muted);line-height:1.45}
+.pdf-sec{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;min-width:0}
+.pdf-sec > .label{display:block}
+.pdf-prog{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.pdf-track{height:8px;border-radius:999px;background:color-mix(in srgb,var(--text) 8%,transparent);overflow:hidden}
+.pdf-track i{display:block;height:100%;width:0;border-radius:inherit;background:var(--action);transition:width .5s var(--ease)}
+.pdf-prog span{font-size:12.5px;color:var(--muted)}
+.pdf-done{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-radius:16px;background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.pdf-done b{color:var(--head);font-size:14px}
+.pdf-done span{font-size:12.5px;color:var(--muted)}
+.pdf-done.err{background:color-mix(in srgb,var(--err) 10%,transparent)}
+@media (max-width:640px){.pdf-opts{grid-template-columns:1fr}}
 .uni-strip i{flex:1}
 .uni-card b{font-size:15px;color:var(--head)}
 .uni-card span{font-size:13px;color:var(--muted)}
@@ -668,6 +687,9 @@ html[data-theme="dark"] .mk .bl.soft{background:var(--action)}
     <a class="logo" href="#accueil" data-logo data-go="accueil" aria-label="Accueil de la charte"></a>
     <nav class="tabs glide" id="tabs" aria-label="Navigation principale"></nav>
     <div class="right">
+      <button class="icon-btn mag" id="pdfBtn" aria-label="Exporter la charte en PDF" title="Exporter en PDF">
+        <svg class="i" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 11v6M9 14l3 3 3-3"/></svg>
+      </button>
       <button class="icon-btn mag" id="editBtn" aria-label="Personnaliser la charte" title="Personnaliser la charte" hidden>
         <svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>
       </button>
@@ -802,6 +824,9 @@ html[data-theme="dark"] .mk .bl.soft{background:var(--action)}
 
 <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
 
+<div class="overlay" id="pdfOverlay" hidden>
+  <div class="modal glass pdf-modal" role="dialog" aria-modal="true" aria-labelledby="pdfTitle" id="pdfModal"></div>
+</div>
 <div class="overlay" id="ticketOverlay" hidden>
   <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="ticketTitle" id="ticketModal"></div>
 </div>
@@ -1032,6 +1057,14 @@ const SOCIAL_TITLES={
   granules:['Palette ou vrac : que choisir ?','Combien de palettes pour un hiver ?','Deux à trois palettes en moyenne','Calculez votre besoin']
 };
 
+const REDAC=[
+  {t:'Aucun emoji, dans aucune création : outil, site, carrousel, présentation ou e-mail.',ok:false},
+  {t:'Aucun texte qui sonne automatique : mentions de remplissage, annotations de brouillon, formules creuses.',ok:false},
+  {t:'Boutons : un verbe à l\'infinitif et son objet. « Préparer une tournée ».',ok:true},
+  {t:'Messages d\'erreur : ce qui s\'est passé, puis ce qu\'il faut faire.',ok:true},
+  {t:'Vouvoiement, phrases courtes, un message par bloc.',ok:true},
+  {t:'Chaque version livrée est la plus aboutie possible : aucun « à compléter ».',ok:true}
+];
 const QUIZ=[
   {q:'Quelle typographie utiliser pour une production Hympyr Transport ?',o:['Inter','Poppins','Montserrat'],a:1,e:'Poppins est la typographie unique de toutes les marques du groupe.'},
   {q:'Dans un outil, où se trouve le bouton d\'envoi de tickets ?',o:['Dans le menu principal','En haut à droite','Dans l\'angle inférieur droit'],a:2,e:'Un bouton explicite, toujours dans l\'angle inférieur droit.'},
@@ -1804,12 +1837,7 @@ function renderRules(){
   renderRuleLists();
   $('[data-sub="redaction"]').innerHTML=`<div class="grid g2">
     <div class="panel glass"><span class="label">Ton</span><h2 style="margin:6px 0 20px">Direct, précis, chaleureux</h2><ul class="checks">
-      <li><span class="tk no">${ic('x')}</span><span>Aucun emoji, dans aucune création : outil, site, carrousel, présentation ou e-mail.</span></li>
-      <li><span class="tk no">${ic('x')}</span><span>Aucun texte qui sonne automatique : mentions de remplissage, annotations de brouillon, formules creuses.</span></li>
-      <li><span class="tk">${ic('check')}</span><span>Boutons : un verbe à l'infinitif et son objet. « Préparer une tournée ».</span></li>
-      <li><span class="tk">${ic('check')}</span><span>Messages d'erreur : ce qui s'est passé, puis ce qu'il faut faire.</span></li>
-      <li><span class="tk">${ic('check')}</span><span>Vouvoiement, phrases courtes, un message par bloc.</span></li>
-      <li><span class="tk">${ic('check')}</span><span>Chaque version livrée est la plus aboutie possible : aucun « à compléter ».</span></li></ul></div>
+      ${REDAC.map(r=>`<li><span class="tk ${r.ok?'':'no'}">${ic(r.ok?'check':'x')}</span><span>${esc(r.t)}</span></li>`).join('')}</ul></div>
     <div class="panel glass"><span class="label">Exemples</span><h2 style="margin:6px 0 20px">Avant, après</h2><div style="display:flex;flex-direction:column;gap:12px">
       ${[['Oups ! Quelque chose s\'est mal passé…','Envoi impossible. Vérifiez votre connexion puis réessayez.'],['N\'hésitez pas à cliquer ici pour découvrir nos fonctionnalités incroyables','Découvrir les fonctionnalités'],['Note : cette section sera complétée prochainement','Section retirée jusqu\'à sa version finale'],['Super, c\'est fait, bravo à vous !','Ticket envoyé. Réponse sous 48 h ouvrées.']].map(e=>`<div class="dd"><div class="tile no"><small>Éviter</small><p>${e[0]}</p></div><div class="tile yes"><small>Préférer</small><p>${e[1]}</p></div></div>`).join('')}
     </div></div></div>`;
@@ -1923,7 +1951,65 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-close]')) closeTicket();
 });
 $('#ticketOverlay').addEventListener('click',e=>{if(e.target.id==='ticketOverlay') closeTicket()});
-addEventListener('keydown',e=>{if(e.key!=='Escape') return; if(!$('#ticketOverlay').hidden) closeTicket(); else if(!$('#editor').hidden) closeEditor(false)});
+
+/* =========================================================
+   EXPORT PDF
+   ========================================================= */
+let pdfOpt={scope:null,print:false}, pdfBusy=false;
+function pdfOptHTML(k){
+  const all=k==='all', cols=all?BRANDS.groupe.colors:BRANDS[k].colors;
+  return `<button type="button" class="tile pdf-opt ${pdfOpt.scope===k?'on':''}" data-scope="${k}" aria-pressed="${pdfOpt.scope===k}">
+    <span class="uni-strip">${(all?BRAND_KEYS.filter(x=>x!=='groupe').map(x=>roleHex(x,'accent')):cols.map(c=>c.h)).map(h=>`<i style="background:${h}"></i>`).join('')}</span>
+    <b>${all?'Charte complète':BRANDS[k].nom}</b><span class="d">${all?'Toutes les marques, chacune avec sa palette. Mise en page en nuances de gris.':'Sa palette, ses logos, ses typographies et les règles communes.'}</span></button>`;
+}
+function pdfFormHTML(){
+  return `<div class="modal-head"><div><span class="label">Export PDF</span><h2 id="pdfTitle" style="margin-top:6px">Exporter la charte</h2>
+      <p>Document A4 paysage, sommaire cliquable et QR code vers hympyr.fr sur chaque page.</p></div>
+      <button class="icon-btn" id="pdfClose" aria-label="Fermer">${ic('x')}</button></div>
+    <div class="pdf-sec"><span class="label">Contenu</span><div class="pdf-opts" id="pdfScopes">${['all','energies','transport','granules'].map(pdfOptHTML).join('')}</div></div>
+    <div class="pdf-sec"><span class="label">Usage</span><div class="seg glass glide" id="pdfUse" style="align-self:flex-start;background:var(--glass)"></div>
+      <span class="ed-note" id="pdfUseNote"></span></div>
+    <div id="pdfState"></div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:20px"><button class="btn ghost" id="pdfCancel">Fermer</button><button class="btn mag" id="pdfGo">Générer le PDF</button></div>`;
+}
+function pdfUseNote(){$('#pdfUseNote').textContent=pdfOpt.print?'Fonds perdus de 3 mm et marges de 15 mm : à transmettre à l\'imprimeur.':'Format écran : à lire sur ordinateur, à partager par e-mail ou à projeter.'}
+function openPdf(){
+  if(pdfOpt.scope===null) pdfOpt.scope=root.dataset.brand==='groupe'?'all':root.dataset.brand;
+  const ov=$('#pdfOverlay'),m=$('#pdfModal'); m.innerHTML=pdfFormHTML(); ov.hidden=false;
+  seg($('#pdfUse'),[['ecran','Écran'],['print','Imprimeur']],pdfOpt.print?'print':'ecran',v=>{pdfOpt.print=v==='print';pdfUseNote()}); pdfUseNote();
+  ov.animate([{opacity:0},{opacity:1}],{duration:320,easing:EASE});
+  m.animate([{opacity:0,transform:'translateY(18px) scale(.97)'},{opacity:1,transform:'none'}],{duration:480,easing:EASE});
+  $('#pdfScopes').onclick=e=>{const b=e.target.closest('[data-scope]');if(!b||pdfBusy)return;pdfOpt.scope=b.dataset.scope;$$('#pdfScopes .pdf-opt').forEach(x=>{const on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)})};
+  $('#pdfClose').onclick=closePdf; $('#pdfCancel').onclick=closePdf; $('#pdfGo').onclick=runPdf;
+  setTimeout(()=>{const b=$('#pdfScopes .pdf-opt.on');if(b)b.focus({preventScroll:true})},200);
+}
+async function closePdf(){
+  if(pdfBusy) return; const ov=$('#pdfOverlay'),m=$('#pdfModal'); if(ov.hidden) return;
+  ov.animate([{opacity:1},{opacity:0}],{duration:240,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'});
+  await m.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(12px) scale(.98)'}],{duration:240,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'}).done;
+  ov.hidden=true; ov.getAnimations().forEach(a=>a.cancel()); m.getAnimations().forEach(a=>a.cancel()); $('#pdfBtn').focus({preventScroll:true});
+}
+function loadPdfModule(){return window.CHARTE_PDF?Promise.resolve():new Promise((ok,ko)=>{const s=document.createElement('script');s.src='assets/charte-pdf.js?v=1';s.onload=ok;s.onerror=()=>ko(new Error('module'));document.head.appendChild(s)})}
+async function runPdf(){
+  if(pdfBusy) return; pdfBusy=true;
+  const go=$('#pdfGo'), st=$('#pdfState'); go.disabled=true; go.textContent='Génération en cours';
+  st.innerHTML=`<div class="pdf-prog"><div class="pdf-track"><i id="pdfBar"></i></div><span id="pdfStep">Préparation</span></div>`;
+  const bar=$('#pdfBar'), lab=$('#pdfStep');
+  try{
+    await loadPdfModule();
+    const r=await window.CHARTE_PDF.build({scope:pdfOpt.scope,print:pdfOpt.print},(p,t)=>{bar.style.width=p+'%';lab.textContent=t});
+    r.doc.save(r.file);
+    const w=r.warns.length;
+    swap(st,`<div class="pdf-done"><b>PDF prêt : ${r.pages} pages</b><span>Le téléchargement a démarré : ${esc(r.file)}.</span>${w?`<span>${w} texte${w>1?'s ont été raccourcis':' a été raccourci'} pour tenir dans ${w>1?'leur':'son'} encart. Allégez-le${w>1?'s':''} dans le mode édition pour l'afficher en entier.</span>`:''}</div>`);
+  }catch(e){
+    console.error(e);
+    swap(st,`<div class="pdf-done err"><b>Génération impossible</b><span>Les polices ou les outils de mise en page n'ont pas pu être chargés. Vérifiez votre connexion puis réessayez.</span></div>`);
+  }
+  pdfBusy=false; go.disabled=false; go.textContent='Générer à nouveau';
+}
+$('#pdfBtn').onclick=openPdf;
+$('#pdfOverlay').addEventListener('click',e=>{if(e.target.id==='pdfOverlay') closePdf()});
+addEventListener('keydown',e=>{if(e.key!=='Escape') return; if(!$('#pdfOverlay').hidden) closePdf(); else if(!$('#ticketOverlay').hidden) closeTicket(); else if(!$('#editor').hidden) closeEditor(false)});
 $('#ticketBtn').onclick=openTicket;
 $('#themeBtn').onclick=()=>setTheme(root.dataset.theme==='dark'?'light':'dark');
 $('#continueBtn').onclick=()=>{const n=nextUnseen(); if(!n){go('regles',{sub:'quiz'});return} const [v,s]=n.split(':');
