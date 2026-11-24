@@ -860,7 +860,26 @@ html[data-theme="dark"] .mk .bl.soft{background:var(--action)}
 const SB_URL='https://cmvkijtlkzfwnzipgstc.supabase.co';
 const SB_KEY='sb_publishable_Q8HVlAGCLlpF5P3Gqsa_9g_fKDDD0bZ';
 let sb=null;
-try{ sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}); }catch(e){ sb=null; }
+try{ sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}); }catch(e){ sb=null; }
+/* Connexion unique : la page de connexion est celle du portail Hympyr, qui ramène ici une fois connecté (?retour=…).
+   Même origine et même client supabase-js : la session ouverte au portail vaut pour cet outil. */
+const PORTAIL_URL = 'https://hympyr-energies.github.io/portail/', OUTIL = 'charte';
+const versPortail = (params = {}) => { const u = new URL(PORTAIL_URL); Object.entries(params).forEach(([k, v]) => { if (v) u.searchParams.set(k, v); }); return u.href; };
+/* Pas de session : direction le portail. Renvoie false (connexion locale affichée en secours) si l'on en revient sans session
+   depuis moins de 20 s, pour ne jamais tourner en boucle entre les deux pages. */
+function allerAuPortail() {
+  const k = 'hym.redirection.' + OUTIL; let d = 0;
+  try { d = +sessionStorage.getItem(k) || 0; sessionStorage.setItem(k, String(Date.now())); } catch (e) {}
+  if (Date.now() - d < 20000) return false;
+  location.replace(versPortail({ retour: location.href, outil: OUTIL })); return true;
+}
+/* Ancien lien « mot de passe oublié » arrivé ici : le nouveau mot de passe se choisit au portail. */
+function recuperationVersPortail() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('type') !== 'recovery' || !h.get('access_token')) return false;
+  location.replace(PORTAIL_URL + location.hash); return true;
+}
+
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -2472,7 +2491,8 @@ $('#loginForm').addEventListener('submit',async e=>{
   const {data,error}=await sb.auth.signInWithPassword({email:em.value.trim().toLowerCase(),password:pw.value});
   if(error){btn.disabled=false;btn.textContent='Se connecter';pw.classList.add('bad');
     setMsg(msg,/confirm/i.test(error.message)?'Adresse e-mail non confirmée. Consultez votre boîte de réception.':'Identifiant ou mot de passe incorrect.');return}
-  if(!(await isMember())){await sb.auth.signOut();btn.disabled=false;btn.textContent='Se connecter';setMsg(msg,'Ce compte n\'a pas encore accès à la charte. Contactez l\'administrateur du groupe.');return}
+  // Pas membre : on garde la session (elle vaut pour les autres outils) et le portail explique le refus
+  if(!(await isMember())){location.replace(versPortail({outil:OUTIL,refus:'1'}));return}
   setMsg(msg,'');btn.disabled=false;btn.textContent='Se connecter';pw.value='';
   enterApp(data.session);
 });
@@ -2495,25 +2515,28 @@ $('#resetForm').addEventListener('submit',async e=>{
 $('#logoutBtn').onclick=async()=>{
   const app=$('#app');
   await app.animate([{opacity:1},{opacity:0}],{duration:280,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'}).done;
-  if(sb) await sb.auth.signOut();
-  if(!$('#editor').hidden){$('#editor').hidden=true;root.classList.remove('editing');draft=null}
-  user=null; canEdit=false; app.getAnimations().forEach(a=>a.cancel()); history.replaceState(null,'',location.pathname);
-  showLogin();
+  user=null; canEdit=false;
+  if(sb) await sb.auth.signOut();   // ferme la session de tous les outils Hympyr
+  location.replace(versPortail());
 };
 
 /* boot */
 (async function boot(){
   CONF=normConf(store.get('hy-conf',null)); applyConfig(CONF);
   syncThemeLabel();
+  if(recuperationVersPortail()) return;
   if(!sb){showLogin();setMsg($('#loginMsg'),'Service de connexion indisponible. Vérifiez votre connexion internet puis rechargez la page.');return}
   sb.auth.onAuthStateChange((ev)=>{
+    // Déconnexion depuis le portail, un autre outil ou un autre onglet : on masque la charte
+    if(ev==='SIGNED_OUT'&&user){user=null;canEdit=false;if(!allerAuPortail())showLogin();return}
     if(ev==='PASSWORD_RECOVERY'){
       $('#app').hidden=true; $('#login').hidden=false; $('#loginForm').hidden=true; $('#resetForm').hidden=false; $('#forgotBtn').parentElement.hidden=true;
       $('#loginTitle').textContent='Nouveau mot de passe'; $('#loginLead').textContent='Choisissez votre nouveau mot de passe pour accéder à la charte.';
     }
   });
   const {data}=await sb.auth.getSession();
-  if(data.session && await isMember()) enterApp(data.session,false); else showLogin();
+  if(!data.session){ if(!allerAuPortail()) showLogin(); return; }
+  if(await isMember()) enterApp(data.session,false); else location.replace(versPortail({outil:OUTIL,refus:'1'}));
 })();
 </script>
 </body>
