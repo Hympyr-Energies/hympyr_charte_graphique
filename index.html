@@ -77,7 +77,7 @@ body{
   font-family:var(--font-body,"Poppins"),"Poppins",system-ui,-apple-system,"Segoe UI",sans-serif;
   background:var(--bg); color:var(--text);
   font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-  min-height:100vh; min-height:100dvh; overflow-x:hidden;
+  min-height:100vh; min-height:100dvh; overflow-x:clip;
   -webkit-tap-highlight-color:transparent;
 }
 h1,h2,h3,h4{color:var(--head);margin:0;line-height:1.2;font-weight:600;letter-spacing:-.01em;font-family:var(--font-head,"Poppins"),"Poppins",system-ui,sans-serif}
@@ -240,7 +240,8 @@ html[data-theme="dark"] .sh{filter:blur(80px)}
 .ed-ops .icon-btn svg{width:15px;height:15px}
 .ed-ops .icon-btn[disabled]{opacity:.35;pointer-events:none}
 .file-btn svg.i{width:15px;height:15px}
-.ed-card .ed-item textarea.input{min-height:60px;max-height:260px;padding:8px 12px;font-size:13.5px;field-sizing:content;resize:vertical}
+.ed-card .ed-item textarea.input{min-height:60px;padding:8px 12px;font-size:13.5px}
+#edBody textarea.input{field-sizing:content;resize:vertical;overflow:hidden}
 .ed-warn{font-size:12.5px;color:var(--err);display:flex;flex-direction:column;gap:4px}
 .ed-ok{font-size:12.5px;color:var(--ok)}
 .ed-card textarea.input{min-height:84px;padding:10px 12px;font-size:14px;border-radius:12px;line-height:1.5}
@@ -429,6 +430,8 @@ main{position:relative;width:100%;max-width:1240px;margin:0 auto;padding:calc(va
 .type b{font-size:15px;color:var(--head);line-height:1.3}
 .type span{font-size:12.5px;color:var(--muted)}
 .crea-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (min-width:1101px){.crea-body > .stage{position:sticky;top:calc(var(--nav-h) + 40px);max-height:calc(100dvh - var(--nav-h) - 56px);overflow:auto;overscroll-behavior:contain}}
+.crea-body .checks li span{overflow-wrap:anywhere;white-space:pre-line}
 .stage{padding:24px;border-radius:var(--r-xl);display:flex;flex-direction:column;gap:20px}
 .stage-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;min-width:0}
 .stage-head > div{min-width:0}
@@ -1123,9 +1126,10 @@ const DEFAULTS={
   qa:[{t:'Une image saute, un bloc apparaît sans fondu, un écran change d\'un coup.',ok:false},{t:'Une animation saccade ou ralentit l\'interface sur un ordinateur standard.',ok:false},{t:'Un changement de hauteur fait sauter la page au lieu de s\'étirer.',ok:false},{t:'Préférence « réduire les animations » respectée par des fondus courts.',ok:true}]
 };
 let CONF=clone(DEFAULTS), ACT=CONF, CONF_META=null;
-const cut=(v,n)=>String(v??'').slice(0,n);
+const TXT_MAX=20000;
+const cut=(v,n)=>String(v??'').slice(0,TXT_MAX);
 const URLOK=u=>/^https:\/\//.test(u||'')||/^assets\/[\w.-]+$/.test(u||'');
-const strList=(a,n)=>Array.isArray(a)?a.map(x=>cut(x,n).trim()).filter(Boolean).slice(0,60):null;
+const strList=(a,n)=>Array.isArray(a)?a.map(x=>cut(x,n).trim()).filter(Boolean).slice(0,1000):null;
 const cleanFam=f=>String(f||'').replace(/["'<>;{}\\]/g,'').trim().slice(0,60);
 const SRCOK=x=>x==='google'||/^https:\/\//.test(x||'');
 const W100=v=>Math.min(900,Math.max(100,Math.round((+v||400)/100)*100));
@@ -1149,12 +1153,12 @@ function normConf(d){
   });
   if(d.creas&&typeof d.creas==='object') Object.keys(c.creas).forEach(t=>{const l=d.creas[t]&&strList(d.creas[t].rules,300); if(l) c.creas[t].rules=l});
   if(d.rules&&typeof d.rules==='object'){
-    const R=d.rules, T=(v,n)=>String(v??'').trim().slice(0,n);
+    const R=d.rules, T=(v,n)=>String(v??'').trim().slice(0,TXT_MAX);
     const okCat=(cats,v,dflt)=>cats.some(k=>k[0]===v&&k[0]!=='tout')?v:dflt;
     if(Array.isArray(R.gold)) c.rules.gold=R.gold.filter(x=>x&&T(x.t,80)).map(x=>({t:T(x.t,80),d:T(x.d,400)}));
     if(Array.isArray(R.laws)) c.rules.laws=R.laws.filter(x=>x&&T(x.n,80)).map(x=>({c:okCat(LAW_CATS,x.c,'decision'),n:T(x.n,80),p:T(x.p,400),a:T(x.a,400)}));
     if(Array.isArray(R.copy)) c.rules.copy=R.copy.filter(x=>x&&T(x.n,80)).map(x=>({c:okCat(COPY_CATS,x.c,'parcours'),n:T(x.n,80),p:T(x.p,600),
-      s:Array.isArray(x.s)?x.s.filter(y=>Array.isArray(y)&&T(y[0],60)).slice(0,8).map(y=>[T(y[0],60),T(y[1],300)]):[],a:T(x.a,700),w:T(x.w,400)}));
+      s:Array.isArray(x.s)?x.s.filter(y=>Array.isArray(y)&&T(y[0],60)).map(y=>[T(y[0],60),T(y[1],300)]):[],a:T(x.a,700),w:T(x.w,400)}));
   }
   if(Array.isArray(d.qa)) c.qa=d.qa.map(x=>({t:cut(x&&x.t,240).trim(),ok:!!(x&&x.ok)})).filter(x=>x.t);
   return c;
@@ -2049,10 +2053,10 @@ function brandSegHTML(id){return `<div class="seg glass glide scroll" id="${id}"
 function colorCard(c,i){
   return `<div class="tile ed-card" data-i="${i}">
     <div class="ed-row"><label class="ed-swatch" title="Choisir la couleur"><i style="background:${c.h}"></i><input type="color" value="${c.h.toLowerCase()}" data-f="pick" aria-label="Couleur ${esc(c.n)}"></label>
-      <input class="input" data-f="n" value="${esc(c.n)}" maxlength="40" aria-label="Nom de la couleur" style="flex:1">
+      <input class="input" data-f="n" value="${esc(c.n)}" aria-label="Nom de la couleur" style="flex:1">
       <button class="icon-btn" data-ed="del" aria-label="Supprimer ${esc(c.n)}" style="width:42px;height:42px;flex:none">${ic('x')}</button></div>
     <div class="ed-row"><input class="input ed-hex" data-f="h" value="${c.h}" maxlength="7" aria-label="Code hexadécimal" spellcheck="false">
-      <input class="input" data-f="u" value="${esc(c.u)}" maxlength="160" placeholder="Usage de la couleur" aria-label="Usage" style="flex:1"></div>
+      <input class="input" data-f="u" value="${esc(c.u)}" placeholder="Usage de la couleur" aria-label="Usage" style="flex:1"></div>
     <div class="roles">${ROLES.map(([r,l])=>`<button type="button" class="role ${c.r.includes(r)?'on':''}" data-role="${r}" aria-pressed="${c.r.includes(r)}">${l}</button>`).join('')}</div>
   </div>`;
 }
@@ -2070,7 +2074,7 @@ function checkHTML(k){
 const RULE_SETS=[['or','Règles d\'or'],['ux','Lois UX'],['copy','Copywriting']];
 const RULE_KEY={or:'gold',ux:'laws',copy:'copy'};
 const RULE_TITLE={or:'t',ux:'n',copy:'n'};
-const RULE_LIM={t:80,d:400,n:80,p:400,a:400,w:400};
+const RULE_LIM={t:TXT_MAX,d:TXT_MAX,n:TXT_MAX,p:TXT_MAX,a:TXT_MAX,w:TXT_MAX};
 const RULE_NEW={
   or:()=>({t:'Nouvelle règle',d:''}),
   ux:()=>({c:'decision',n:'Nouvelle loi',p:'',a:''}),
@@ -2079,17 +2083,17 @@ const RULE_NEW={
 let edRule='or';
 const ruleList=()=>draft.rules[RULE_KEY[edRule]];
 const stepsTxt=s=>s.map(([t,d])=>d?`${t} : ${d}`:t).join('\n');
-function parseSteps(v){return v.split('\n').map(l=>l.trim()).filter(Boolean).slice(0,8).map(l=>{const i=l.indexOf(':');return i<0?[l.slice(0,60),'']:[l.slice(0,i).trim().slice(0,60),l.slice(i+1).trim().slice(0,300)]}).filter(x=>x[0])}
+function parseSteps(v){return v.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const i=l.indexOf(':');return i<0?[l,'']:[l.slice(0,i).trim(),l.slice(i+1).trim()]}).filter(x=>x[0])}
 function catPills(cats,v){return `<div class="roles" role="group" aria-label="Catégorie">${cats.filter(c=>c[0]!=='tout').map(([k,l])=>`<button type="button" class="role ${v===k?'on':''}" data-rc="${k}" aria-pressed="${v===k}">${l}</button>`).join('')}</div>`}
 function ruleCard(r,i,n){
   const tf=RULE_TITLE[edRule], title=r[tf]||'';
   const tools=`<div class="ed-tools"><button type="button" class="icon-btn" data-rx="up" aria-label="Monter" ${i===0?'disabled':''}>${ic('up')}</button><button type="button" class="icon-btn" data-rx="down" aria-label="Descendre" ${i===n-1?'disabled':''}>${ic('down')}</button><button type="button" class="icon-btn" data-rx="del" aria-label="Supprimer ${esc(title)}">${ic('x')}</button></div>`;
-  const head=`<div class="ed-row"><span class="num">${two(i+1)}</span><input class="input${title.trim()?'':' bad'}" data-r="${tf}" value="${esc(title)}" maxlength="80" placeholder="Titre" aria-label="Titre" style="flex:1">${tools}</div>`;
-  const ta=(f,l,ph,max)=>`<label class="field"><span>${l}</span><textarea class="input" data-r="${f}" maxlength="${max}" placeholder="${ph}">${esc(r[f])}</textarea></label>`;
+  const head=`<div class="ed-row"><span class="num">${two(i+1)}</span><input class="input${title.trim()?'':' bad'}" data-r="${tf}" value="${esc(title)}" placeholder="Titre" aria-label="Titre" style="flex:1">${tools}</div>`;
+  const ta=(f,l,ph,max)=>`<label class="field"><span>${l}</span><textarea class="input" data-r="${f}" placeholder="${ph}">${esc(r[f])}</textarea></label>`;
   if(edRule==='or') return `<div class="tile ed-card" data-ri="${i}">${head}${ta('d','Description','Ce que la règle impose',400)}</div>`;
   if(edRule==='ux') return `<div class="tile ed-card" data-ri="${i}">${head}${catPills(LAW_CATS,r.c)}${ta('p','Principe','Énoncé de la loi',400)}${ta('a','Chez Hympyr','Traduction concrète dans nos productions',400)}</div>`;
   return `<div class="tile ed-card" data-ri="${i}">${head}${catPills(COPY_CATS,r.c)}${ta('p','Principe','Ce que vise la technique',600)}
-    <label class="field"><span>Étapes · une par ligne, au format « Étape : description » (8 maximum)</span><textarea class="input" data-r="s" style="min-height:140px" placeholder="Attention : un titre qui nomme le problème">${esc(stepsTxt(r.s))}</textarea></label>
+    <label class="field"><span>Étapes · une par ligne, au format « Étape : description » </span><textarea class="input" data-r="s" style="min-height:140px" placeholder="Attention : un titre qui nomme le problème">${esc(stepsTxt(r.s))}</textarea></label>
     ${ta('a','Chez Hympyr','Usages recommandés et exemple',700)}${ta('w','Vigilance (facultatif)','Limite légale ou de ton à respecter',400)}</div>`;
 }
 function ruleListHTML(){const L=ruleList();return L.length?L.map((r,i)=>ruleCard(r,i,L.length)).join(''):'<p class="ed-note">Aucun élément. Ajoutez-en un pour commencer.</p>'}
@@ -2224,7 +2228,8 @@ function edBodyHTML(){
     <p class="ed-note">Règles affichées dans l'onglet Créations pour ce type de production. Communes à toutes les marques.</p>${listHTML(`creas.${edCrea}.rules`)}`;
   return `<p class="ed-note">Critères affichés dans Composants, onglet Mouvement. Communs à toutes les marques.</p>${listHTML('qa')}`;
 }
-function growAreas(scope){if(CSS.supports&&CSS.supports('field-sizing','content'))return;$$('.ed-item textarea',scope||$('#edBody')).forEach(t=>{t.style.height='auto';t.style.height=Math.min(260,t.scrollHeight+2)+'px'})}
+function growAreas(scope){if(CSS.supports&&CSS.supports('field-sizing','content'))return;$$('textarea',scope||$('#edBody')).forEach(t=>{t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px'})}
+$('#edBody').addEventListener('input',e=>{if(e.target.tagName==='TEXTAREA')growAreas(e.target.parentElement)});
 function redrawList(p,focus){
   const card=$(`[data-list="${CSS.escape(p)}"]`); if(!card) return; const t=document.createElement('div'); t.innerHTML=listHTML(p); const n=t.firstElementChild; card.replaceWith(n); growAreas(n);
   if(focus!=null){const it=$(`.ed-item[data-i="${focus}"]`,n); if(it){const f=$('input,textarea,select',it); if(f) f.focus({preventScroll:false}); it.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:380,easing:EASE})}}
@@ -2298,8 +2303,8 @@ $('#edBody').addEventListener('input',e=>{
   const card=e.target.closest('[data-i]'); if(!card) return;
   const c=draft.brands[root.dataset.brand].colors[+card.dataset.i]; if(!c) return;
   pendingClose=false;
-  if(f==='n') c.n=e.target.value.slice(0,40);
-  if(f==='u') c.u=e.target.value.slice(0,160);
+  if(f==='n') c.n=e.target.value;
+  if(f==='u') c.u=e.target.value;
   if(f==='pick'){c.h=e.target.value.toUpperCase();$('[data-f=h]',card).value=c.h;$('[data-f=h]',card).classList.remove('bad');$('.ed-swatch i',card).style.background=c.h}
   if(f==='h'){let v=e.target.value.trim();if(v&&v[0]!=='#')v='#'+v;
     if(/^#[0-9a-f]{6}$/i.test(v)){c.h=v.toUpperCase();$('[data-f=pick]',card).value=v.toLowerCase();$('.ed-swatch i',card).style.background=v;e.target.classList.remove('bad')}
@@ -2347,17 +2352,16 @@ $('#edBody').addEventListener('change',async e=>{
 /* ---------- editable lists ---------- */
 $('#edBody').addEventListener('input',e=>{
   if(!draft) return; const t=e.target;
-  if(t.dataset.sf){lset(t.dataset.sf,t.value.slice(0,400));pendingClose=false;preview();return}
+  if(t.dataset.sf){lset(t.dataset.sf,t.value);pendingClose=false;preview();return}
   const lf=t.dataset.lf; if(lf==null) return; const card=t.closest('[data-list]'), it=t.closest('[data-i]'); if(!card||!it) return;
   const p=card.dataset.list, S=schema(p), list=lget(p), i=+it.dataset.i; if(!list||list[i]===undefined) return;
   if(lf==='family'||lf==='fondSel') return; /* applied on change */
   if(t.tagName==='TEXTAREA') growAreas(it);
-  if(S.str){list[i]=t.value.slice(0,300)}
+  if(S.str){list[i]=t.value}
   else if(lf==='fondHex'){let v=t.value.trim();if(v&&v[0]!=='#')v='#'+v;if(/^#[0-9a-f]{6}$/i.test(v)){list[i].fond=v.toUpperCase();t.classList.remove('bad');const lg=$('.ed-logo',it);if(lg)lg.style.background=v}else{t.classList.add('bad');return}}
   else{const f=(S.fields||[]).find(x=>x.k===lf);let v=t.value;
     if(f&&f.t==='num'){if(v==='')return;v=Math.min(f.max??1e4,Math.max(f.min??0,Math.round(+v||0)))}
     else if(f&&f.t==='sel'){v=v==='true'}
-    else v=v.slice(0,lf==='u'?200:240);
     list[i][lf]=v}
   pendingClose=false; preview();
 });
