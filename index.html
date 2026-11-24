@@ -448,7 +448,9 @@ main{position:relative;width:100%;max-width:1240px;margin:0 auto;padding:calc(va
 .type span{font-size:12.5px;color:var(--muted)}
 .crea-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:start}
 @media (min-width:1101px){.crea-body > .stage{position:sticky;top:calc(var(--nav-h) + 40px);max-height:calc(100dvh - var(--nav-h) - 56px);overflow:auto;overscroll-behavior:contain}}
-.crea-body .checks li span{overflow-wrap:anywhere;white-space:pre-line}
+.crea-body .checks li span{overflow-wrap:anywhere}
+/* user texts keep their line breaks */
+.ut,.sw .use,.law p,.law .app,.cw > p,.cw ol li span,.cw .app,.cw .warn,.card > p,.checks li span{white-space:pre-line;overflow-wrap:anywhere}
 .stage{padding:24px;border-radius:var(--r-xl);display:flex;flex-direction:column;gap:20px}
 .stage-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;min-width:0}
 .stage-head > div{min-width:0}
@@ -1520,7 +1522,7 @@ const emptyP=t=>`<p class="muted" style="font-size:14px">${t}</p>`;
 function renderTypo(){
   const B=ACT.brands[root.dataset.brand];
   const fontPanel=f=>`<div class="panel glass"><span class="label">${esc(f.n||'Police')}${f.r.length?' · '+f.r.map(r=>r==='titres'?'titres':'texte courant').join(' et '):''}</span><div class="big-aa" style="margin-top:12px;font-family:'${esc(f.family)}',Poppins,sans-serif">Aa</div>
-    <h2 style="margin-top:16px;font-family:'${esc(f.family)}',Poppins,sans-serif">${esc(f.family)}</h2>${f.u?`<p class="muted" style="margin-top:8px">${esc(f.u)}</p>`:''}
+    <h2 style="margin-top:16px;font-family:'${esc(f.family)}',Poppins,sans-serif">${esc(f.family)}</h2>${f.u?`<p class="muted ut" style="margin-top:8px">${esc(f.u)}</p>`:''}
     <div class="btn-row" style="margin-top:20px">${f.src==='google'?`<a class="btn ghost sm mag" href="https://fonts.google.com/specimen/${encodeURIComponent(f.family).replace(/%20/g,'+')}" target="_blank" rel="noopener">Télécharger ${esc(f.family)}</a>`:`<a class="btn ghost sm mag" href="${esc(f.src)}" target="_blank" rel="noopener">Télécharger le fichier</a>`}</div></div>`;
   $('[data-sub="typo"]').innerHTML=`
     <div class="specimen">
@@ -1551,7 +1553,7 @@ function renderLogo(){
       <b style="color:var(--head);font-size:14px">${BRANDS[kk].nom}</b></div>`}).join('');
   $('[data-sub="logo"]').innerHTML=`
     <div class="panel glass"><div class="panel-head"><div><span class="label">${esc(b.nom)}</span><h2 style="margin-top:6px">Déclinaisons du logotype</h2>
-      ${B.logoIntro?`<p>${esc(B.logoIntro)}</p>`:''}</div></div>
+      ${B.logoIntro?`<p class="ut">${esc(B.logoIntro)}</p>`:''}</div></div>
       ${B.logos.length?`<div class="grid g3">${B.logos.map(variant).join('')}</div>`:emptyP('Aucun logo défini pour cette marque.')}</div>
     <div class="grid g2">
       <div class="panel glass"><span class="label">Usage</span><h2 style="margin:6px 0 20px">À respecter</h2>${B.logoDo.length?`<ul class="checks">${B.logoDo.map(okLi).join('')}</ul>`:emptyP('Aucune règle d\'usage.')}</div>
@@ -1564,7 +1566,7 @@ function renderSpaces(){
   const B=ACT.brands[root.dataset.brand], mx=Math.max(64,...B.spaces.map(x=>x.v));
   $('[data-sub="espaces"]').innerHTML=`
     <div class="panel glass"><div class="panel-head"><div><span class="label">Échelle</span><h2 style="margin-top:6px">Espacements</h2>
-      ${B.spaceNote?`<p>${esc(B.spaceNote)}</p>`:''}</div></div>
+      ${B.spaceNote?`<p class="ut">${esc(B.spaceNote)}</p>`:''}</div></div>
       ${B.spaces.map(x=>`<div class="space-row"><b style="color:var(--head);font-size:14px">${x.v} px</b><span><span class="space-bar" style="display:block;width:${Math.max(1,x.v/mx*100)}%"></span></span><span class="muted" style="font-size:12.5px">${esc(x.u)}</span></div>`).join('')||emptyP('Aucun espacement défini.')}
     </div>
     <div class="panel glass"><div class="panel-head"><div><span class="label">Rayons</span><h2 style="margin-top:6px">Arrondis</h2></div></div>
@@ -2010,7 +2012,7 @@ async function closePdf(){
   await m.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(12px) scale(.98)'}],{duration:240,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'}).done;
   ov.hidden=true; ov.getAnimations().forEach(a=>a.cancel()); m.getAnimations().forEach(a=>a.cancel()); $('#pdfBtn').focus({preventScroll:true});
 }
-function loadPdfModule(){return window.CHARTE_PDF?Promise.resolve():new Promise((ok,ko)=>{const s=document.createElement('script');s.src='assets/charte-pdf.js?v=1';s.onload=ok;s.onerror=()=>ko(new Error('module'));document.head.appendChild(s)})}
+function loadPdfModule(){return window.CHARTE_PDF?Promise.resolve():new Promise((ok,ko)=>{const s=document.createElement('script');s.src='assets/charte-pdf.js?v=2';s.onload=ok;s.onerror=()=>ko(new Error('module'));document.head.appendChild(s)})}
 async function runPdf(){
   if(pdfBusy) return; pdfBusy=true;
   const go=$('#pdfGo'), st=$('#pdfState'); go.disabled=true; go.textContent='Génération en cours';
@@ -2021,7 +2023,7 @@ async function runPdf(){
     const r=await window.CHARTE_PDF.build({scope:pdfOpt.scope,print:pdfOpt.print},(p,t)=>{bar.style.width=p+'%';lab.textContent=t});
     r.doc.save(r.file);
     const w=r.warns.length;
-    swap(st,`<div class="pdf-done"><b>PDF prêt : ${r.pages} pages</b><span>Le téléchargement a démarré : ${esc(r.file)}.</span>${w?`<span>${w} texte${w>1?'s ont été raccourcis':' a été raccourci'} pour tenir dans ${w>1?'leur':'son'} encart. Allégez-le${w>1?'s':''} dans le mode édition pour l'afficher en entier.</span>`:''}</div>`);
+    swap(st,`<div class="pdf-done"><b>PDF prêt : ${r.pages} pages</b><span>Le téléchargement a démarré : ${esc(r.file)}.</span>${w?`<span>${w} texte${w>1?'s':''} trop long${w>1?'s':''} pour ${w>1?'leur':'son'} encart ${w>1?'sont reproduits':'est reproduit'} en entier dans les pages « Textes complets ».</span>`:''}</div>`);
   }catch(e){
     console.error(e);
     swap(st,`<div class="pdf-done err"><b>Génération impossible</b><span>Les polices ou les outils de mise en page n'ont pas pu être chargés. Vérifiez votre connexion puis réessayez.</span></div>`);

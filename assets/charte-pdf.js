@@ -40,7 +40,7 @@
     const PW = TW + 2 * BL, PH = TH + 2 * BL;
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [PW, PH], compress: true });
-    const warns = [];
+    const warns = [], annex = [];
 
     /* ---------- fonts ---------- */
     step(10, 'Chargement des polices');
@@ -89,19 +89,22 @@
     const font = (w, size, f) => { doc.setFont(f || W(w), 'normal'); doc.setFontSize(size); };
     const lineH = (size, lh) => size * PT * lh;
     const frSp = t => String(t || '').replace(/ ([?!:;»%€])/g, '\u00A0$1').replace(/« /g, '«\u00A0');
+    function wrapM(text, w, size, wt, f) { font(wt, size, f); const out = []; frSp(text).split('\n').forEach(pp => { if (!pp.trim()) { out.push({ s: '', end: true }); return; } const L = doc.splitTextToSize(pp.trim(), w); L.forEach((l, i) => out.push({ s: l, end: i === L.length - 1 })); }); return out; }
     function wrap(text, w, size, wt, f) { font(wt, size, f); return frSp(text).split('\n').flatMap(p => p.trim() ? doc.splitTextToSize(p.trim(), w) : ['']); }
     /* measure the height a text needs at its largest size that fits */
     function fitLines(text, w, h, o) {
       const lh = o.lh || 1.35; let size = o.size;
       for (; size >= (o.min || o.size); size -= 0.5) { const L = wrap(text, w, size, o.w || 400, o.f); if (L.length * lineH(size, lh) <= h + 0.01) return { L, size, lh }; }
       size = o.min || o.size; let L = wrap(text, w, size, o.w || 400, o.f); const max = Math.max(1, Math.floor((h + 0.01) / lineH(size, lh)));
-      if (L.length > max) { L = L.slice(0, max); let last = L[max - 1]; font(o.w || 400, size, o.f); while (last && doc.getTextWidth(last + '…') > w) last = last.replace(/\s*\S+$/, ''); L[max - 1] = (last || '') + '…'; warns.push(String(text).slice(0, 60)); }
-      return { L, size, lh };
+      let trunc = false;
+      if (L.length > max) { trunc = true; L = L.slice(0, max); let last = L[max - 1]; font(o.w || 400, size, o.f); while (last && doc.getTextWidth(last + '…') > w) last = last.replace(/\s*\S+$/, ''); L[max - 1] = (last || '') + '…'; }
+      return { L, size, lh, trunc };
     }
     /* draw a text inside its box ; returns the height used */
     function box(text, x, y, w, h, o = {}) {
       if (!String(text || '').trim()) return 0;
-      const f = fitLines(text, w, h, o); font(o.w || 400, f.size, o.f); ink(o.c || INK);
+      const f = fitLines(text, w, h, o); if (f.trunc) { warns.push(String(text).slice(0, 60)); annex.push({ label: o.label || '', text: String(text) }); }
+      font(o.w || 400, f.size, o.f); ink(o.c || INK);
       const step = lineH(f.size, f.lh); const used = f.L.length * step;
       let y0 = y; if (o.v === 'bottom') y0 = y + h - used; else if (o.v === 'middle') y0 = y + (h - used) / 2;
       f.L.forEach((l, i) => doc.text(l, X(o.a === 'right' ? x + w : o.a === 'center' ? x + w / 2 : x), Y(y0 + i * step), { baseline: 'top', align: o.a || 'left', charSpace: o.cs || 0 }));
@@ -164,6 +167,7 @@
       return { y: Math.max(32, 17 + h + 5), page: pageNo };
     }
     function section(num, t, intro, key) {
+      flushAnnex();
       cur = { n: num, t, key, intro, page: 0 }; SECTIONS.push(cur);
       cur.page = page('dark');
       const on = onDark(T.deep);
@@ -179,27 +183,86 @@
       chrome(true);
     }
 
-    /* lists flowing over columns and pages ; render(item, x, y, w) returns height, need(item, w) returns height */
-    function flow(items, { cols = 2, gap = 8, title, lab, measure, render, startY }) {
+    /* ---------- STORY : text laid out line by line over columns and pages ----------
+       Blocks : { t:'p'|'h', text, size, w, c, lh, mark:true|false|undefined, cs, gap }
+                { t:'card', items:[blocks], bg, pad, title, gap }
+       A block (or a card) may split between two lines : nothing is ever shortened. */
+    const titleY = t => { const f = fitLines(t, CB.w - 80, 11, { size: 17, min: 12, w: 700, lh: 1.15 }); return Math.max(32, 17 + f.L.length * lineH(f.size, 1.15) + 5); };
+    function story(blocks, o) {
+      blocks = (blocks || []).filter(Boolean); if (!blocks.length) return;
+      const evenCols = n => { const w = (CB.w - (n - 1) * 10) / n; return [...Array(n)].map((_, i) => ({ x: CB.x + i * (w + 10), w })); };
+      const colsOf = i => (i === 0 && o.firstCols) || evenCols(o.cols || 2);
+      const titleOf = i => i === 0 ? o.title : `${o.title} (suite)`;
+      const topOf = i => titleY(titleOf(i));
+      const P = []; const pg = i => P[i] || (P[i] = { segs: [], ops: [] });
+      let pi = 0, ci = 0, y = topOf(0), fresh = true, cardCtx = null; pg(0);
+      const col = () => colsOf(pi)[ci];
+      const pad = () => cardCtx ? cardCtx.pad : 0;
+      const bottom = () => CB.b - pad();
+      const closeSeg = () => { if (!cardCtx) return; const s = cardCtx.s, c = colsOf(s.pi)[s.ci]; pg(s.pi).segs.push({ x: c.x, w: c.w, y0: s.y, y1: Math.min(CB.b, y + cardCtx.pad), bg: cardCtx.bg }); };
+      function nextCol() {
+        closeSeg(); ci++; if (ci >= colsOf(pi).length) { pi++; ci = 0; pg(pi); } y = topOf(pi); fresh = true;
+        if (cardCtx) { cardCtx.s = { pi, ci, y }; y += cardCtx.pad; if (cardCtx.title) { const c = col(); pg(pi).ops.push({ k: 't', x: c.x + cardCtx.pad, y, s: `${cardCtx.title} (suite)`, size: 8, w: 600, c: MUTED }); y += 8 * PT * 1.4 + 1.5; } }
+      }
+      function lineBox(b) { const c = col(), p = pad(), m = b.mark !== undefined ? 8 : 0; return { x: c.x + p + m + (b.indent || 0), mx: c.x + p + (b.indent || 0), w: c.w - 2 * p - m - (b.indent || 0) }; }
+      function para(b) {
+        const size = b.size || 10.5, wt = b.w || 400, lh = b.lh || 1.4, step = lineH(size, lh);
+        let bx = lineBox(b), L = wrapM(b.text, bx.w, size, wt);
+        if (b.t === 'h' && !fresh && y + step * 3 > bottom()) { nextCol(); bx = lineBox(b); L = wrapM(b.text, bx.w, size, wt); }
+        else if (!fresh && L.length >= 2 && y + step * 2 > bottom()) { nextCol(); bx = lineBox(b); L = wrapM(b.text, bx.w, size, wt); }
+        for (let i = 0; i < L.length; i++) {
+          if (y + step > bottom() + 0.01) {
+            const w0 = bx.w; nextCol(); bx = lineBox(b);
+            if (Math.abs(bx.w - w0) > 0.5) { const rest = L.slice(i).map(l => l.s + (l.end ? '\n' : ' ')).join('').replace(/\n$/, ''); L = L.slice(0, i).concat(wrapM(rest, bx.w, size, wt)); }
+          }
+          if (i === 0 && b.mark !== undefined) pg(pi).ops.push({ k: 'm', x: bx.mx, y: y + Math.max(0, (step - 4.4) / 2), ok: b.mark });
+          pg(pi).ops.push({ k: 't', x: bx.x, y, s: L[i].s, size, w: wt, c: b.c || INK, cs: b.cs || 0 });
+          y += step; fresh = false;
+        }
+        y += b.gap != null ? b.gap : 3.5;
+      }
+      function cardBlock(b) {
+        const p = b.pad != null ? b.pad : 6;
+        if (!fresh && y + p * 2 + 12 > CB.b) nextCol();
+        cardCtx = { bg: b.bg || WHITE, pad: p, title: b.title || '', s: { pi, ci, y } }; y += p; fresh = true;
+        let lastGap = 0; b.items.filter(Boolean).forEach(it => { para(it); lastGap = it.gap != null ? it.gap : 3.5; });
+        y -= lastGap; closeSeg(); cardCtx = null; y += p + (b.gap != null ? b.gap : 6); fresh = false;
+      }
+      blocks.forEach(b => b.t === 'card' ? cardBlock(b) : b.t === 'space' ? (y += b.h) : para(b));
+      /* render */
+      P.forEach((pgD, i) => {
+        content(titleOf(i), o.lab);
+        if (o.decorate) o.decorate(i);
+        pgD.segs.forEach(s => rect(s.x, s.y0, s.w, s.y1 - s.y0, s.bg, 3));
+        pgD.ops.forEach(op => {
+          if (op.k === 'm') { mark(op.x, op.y, op.ok); return; }
+          font(op.w, op.size); ink(op.c); doc.text(op.s, X(op.x), Y(op.y), { baseline: 'top', charSpace: op.cs || 0 });
+        });
+      });
+    }
+    /* full texts that did not fit in a fixed box, reproduced at the end of the part */
+    function flushAnnex() {
+      if (!annex.length) return;
+      const items = annex.splice(0);
+      story(items.map(a => ({ t: 'card', title: a.label, items: [a.label ? { t: 'h', text: a.label, size: 10.5, w: 600, c: T.deep, gap: 2 } : null, { t: 'p', text: a.text, size: 10 }] })),
+        { cols: 2, title: 'Textes complets de cette partie', lab: cur ? cur.t : '' });
+    }
+    const card = (x, y, w, h, c = WHITE) => rect(x, y, w, h, c, 3);
+    const P_ = (text, mk, o = {}) => ({ t: 'p', text, mark: mk, size: 10.5, ...o });
+    const H_ = (text, o = {}) => ({ t: 'h', text, size: 12, w: 600, c: T.deep, gap: 3, ...o });
+
+    /* kept for the quiz (static texts) */
+    function flow(items, { cols = 2, gap = 8, title, lab, measure, render }) {
       if (!items.length) return;
       const colW = (CB.w - (cols - 1) * 10) / cols;
-      let y0 = startY != null ? startY : content(title, lab).y, col = 0, y = y0, first = true;
+      let y0 = content(title, lab).y, col = 0, y = y0;
       items.forEach(it => {
         const h = measure(it, colW);
-        if (y + h > CB.b && !(y === y0)) {
-          col++; y = y0;
-          if (col >= cols) { col = 0; y0 = content(title + ' (suite)', lab).y; y = y0; }
-        }
-        first = false;
+        if (y + h > CB.b && y !== y0) { col++; y = y0; if (col >= cols) { col = 0; y0 = content(title + ' (suite)', lab).y; y = y0; } }
         render(it, CB.x + col * (colW + 10), y, colW, Math.min(h, CB.b - y));
         y += h + gap;
       });
     }
-    const card = (x, y, w, h, c = WHITE) => rect(x, y, w, h, c, 3);
-    const bullet = (ok) => ({
-      measure: (t, w) => Math.max(5, need(t, w - 9, 10.5)),
-      render: (t, x, y, w, h) => { mark(x, y + 0.3, ok); box(t, x + 8, y, w - 9, h, { size: 10.5, min: 8.5, c: INK }); }
-    });
 
     /* ---------- blocks ---------- */
     function logoPages(k) {
@@ -207,34 +270,28 @@
       const n = L.length;
       const p = content(n ? `Le logotype se décline en ${n} version${n > 1 ? 's' : ''}, chacune pour son fond` : 'Le logotype de la marque', BRANDS[k].nom);
       let y = p.y;
-      if (B.logoIntro) { y += box(B.logoIntro, CB.x, y, CB.w * 0.62, 14, { size: 10.5, min: 9, c: MUTED, lh: 1.45 }) + 6; }
-      const per = 3, cw = (CB.w - (per - 1) * 8) / per, rows = Math.min(2, Math.max(1, Math.ceil(n / per))), ch = Math.max(44, Math.min(84, (CB.b - y - rows * 16) / rows));
+      const introFits = B.logoIntro && !fitLines(B.logoIntro, CB.w * 0.62, 14, { size: 10.5, min: 9, lh: 1.45 }).trunc;
+      if (introFits) { y += box(B.logoIntro, CB.x, y, CB.w * 0.62, 14, { size: 10.5, min: 9, c: MUTED, lh: 1.45 }) + 6; }
+      const per = 3, cw = (CB.w - (per - 1) * 8) / per, rows = Math.min(2, Math.max(1, Math.ceil(n / per))), ch = Math.max(44, Math.min(84, (CB.b - y - rows * 18) / rows));
       L.forEach((l, i) => {
-        if (i && i % per === 0) { y += ch + 16; if (y + ch + 14 > CB.b) y = content('Les déclinaisons du logotype (suite)', BRANDS[k].nom).y; }
+        if (i && i % per === 0) { y += ch + 18; if (y + ch + 16 > CB.b) y = content('Les déclinaisons du logotype (suite)', BRANDS[k].nom).y; }
         const x = CB.x + (i % per) * (cw + 8), bg = l.fond === 'clair' ? CRAIE : l.fond === 'sombre' ? roleHex(k, 'profond') : l.fond;
         card(x, y, cw, ch, bg); stroke(FILET); doc.setLineWidth(0.25); doc.roundedRect(X(x), Y(y), cw, ch, 3, 3, 'S');
         const dark = logoKindOf(l.fond) === 'sombre';
         if (l.img) { let w = Math.min(cw - 24, Math.min(34, ch * 0.4) * l.img.r), h = w / l.img.r; if (h > ch - 20) { h = ch - 20; w = h * l.img.r; } doc.addImage(l.img.data, 'PNG', X(x + (cw - w) / 2), Y(y + (ch - h) / 2), w, h); }
         else genLogo(k, x + 12, y + ch / 2 - 5, 10, dark);
-        box(l.n || 'Logo', x, y + ch + 3, cw, 6, { size: 9.5, w: 600, c: T.deep });
-        box(l.fond === 'clair' ? 'Fond clair' : l.fond === 'sombre' ? 'Fond sombre' : 'Fond ' + l.fond, x, y + ch + 8, cw, 5, { size: 8, c: MUTED });
+        box(l.n || 'Logo', x, y + ch + 3, cw, 9, { size: 9.5, min: 7, w: 600, c: T.deep, lh: 1.2, label: 'Nom de la déclinaison' });
+        box(l.fond === 'clair' ? 'Fond clair' : l.fond === 'sombre' ? 'Fond sombre' : 'Fond ' + l.fond, x, y + ch + 12, cw, 5, { size: 8, c: MUTED });
       });
-      /* rules */
-      const lists = [[B.logoDo, true, 'À respecter'], [B.logoDont, false, 'À ne jamais faire']], idx = [0, 0], cw2 = (CB.w - 10) / 2;
-      for (let pg = 0; pg === 0 || idx.some((v, i) => v < lists[i][0].length); pg++) {
-        const P = content(pg ? 'Le logo se respecte sans exception (suite)' : 'Le logo se respecte sans exception', BRANDS[k].nom);
-        lists.forEach(([list, ok, t], ci) => {
-          if (pg && idx[ci] >= list.length) return;
-          const x = CB.x + ci * (cw2 + 10); let yy = P.y; const top = yy + 18;
-          card(x, yy, cw2, CB.b - yy); box(t + (pg && idx[ci] < list.length ? ' (suite)' : ''), x + 8, yy + 7, cw2 - 16, 8, { size: 12.5, w: 600, c: T.deep }); yy = top;
-          while (idx[ci] < list.length) { const r = list[idx[ci]], h = Math.max(5, need(r, cw2 - 25, 10.5)); if (yy + h > CB.b - 4 && yy > top) break;
-            mark(x + 8, yy + 0.3, ok); box(r, x + 16, yy, cw2 - 25, Math.min(h, CB.b - 4 - yy), { size: 10.5, min: 8.5 }); yy += h + 5; idx[ci]++; }
-          if (!list.length) box('Aucune règle définie.', x + 8, yy, cw2 - 16, 6, { size: 10, c: MUTED });
-        });
-      }
+      story([
+        !introFits && B.logoIntro ? { t: 'card', title: 'Présentation du logotype', items: [H_('Présentation du logotype'), { t: 'p', text: B.logoIntro, size: 10.5, c: INK }] } : null,
+        { t: 'card', title: 'À respecter', items: [H_('À respecter', { gap: 5 }), ...(B.logoDo.length ? B.logoDo.map(r => P_(r, true, { gap: 4.5 })) : [P_('Aucune règle définie.', undefined, { c: MUTED })])] },
+        { t: 'card', title: 'À ne jamais faire', items: [H_('À ne jamais faire', { gap: 5 }), ...(B.logoDont.length ? B.logoDont.map(r => P_(r, false, { gap: 4.5 })) : [P_('Aucun interdit défini.', undefined, { c: MUTED })])] }
+      ], { cols: 2, title: 'Le logo se respecte sans exception', lab: BRANDS[k].nom });
     }
     function palettePages(k, title) {
       const cs = ACT.brands[k].colors, per = cs.length <= 6 ? Math.max(3, cs.length) : 4;
+      const longU = [];
       for (let i = 0; i < cs.length; i += per) {
         const part = cs.slice(i, i + per), p = content(i ? `${title} (suite)` : title, BRANDS[k].nom);
         const cw = (CB.w - (per - 1) * 8) / per, ch = CB.b - p.y;
@@ -242,7 +299,7 @@
           const x = CB.x + j * (cw + 8), y = p.y; card(x, y, cw, ch);
           rect(x, y, cw, ch * 0.42, c.h, 3); rect(x, y + ch * 0.42 - 3, cw, 3, c.h);
           const t = bestText(c.h);
-          box(c.n, x + 6, y + 6, cw - 12, 12, { size: 13, min: 9, w: 600, c: t.c, lh: 1.15 });
+          box(c.n, x + 6, y + 6, cw - 12, ch * 0.42 - 20, { size: 13, min: 7, w: 600, c: t.c, lh: 1.15, label: `Nom de la couleur ${c.h}` });
           box(c.h, x + 6, y + ch * 0.42 - 11, cw - 12, 6, { size: 9.5, w: 500, c: t.c });
           let yy = y + ch * 0.42 + 6;
           [['RVB', hex(c.h).join(' ')], ['CMJN', cmyk(c.h)]].forEach(([a, b]) => {
@@ -250,10 +307,13 @@
           box('Contraste', x + 6, yy, cw - 12, 5, { size: 8, w: 600, c: MUTED }); yy += 5;
           yy += box(`${t.n} ${fr(t.r)}:1, ${grade(t.r)}`, x + 6, yy, cw - 12, 9, { size: 8.5, min: 7, c: INK, lh: 1.25 }) + 1.5;
           stroke(FILET); doc.setLineWidth(0.25); doc.line(X(x + 6), Y(yy + 1), X(x + cw - 6), Y(yy + 1)); yy += 5;
-          box(c.u || '', x + 6, yy, cw - 12, y + ch - yy - 5, { size: 9.5, min: 7.5, c: INK, lh: 1.4 });
+          const room = y + ch - yy - 5;
+          if (c.u && fitLines(c.u, cw - 12, room, { size: 9.5, min: 8, lh: 1.4 }).trunc) { longU.push(c); box('Usage détaillé dans les pages suivantes.', x + 6, yy, cw - 12, room, { size: 8.5, c: MUTED, lh: 1.4 }); }
+          else box(c.u || '', x + 6, yy, cw - 12, room, { size: 9.5, min: 8, c: INK, lh: 1.4 });
         });
         box('Valeurs CMJN indicatives : validez la conversion sur épreuve avant impression.', CB.x, CB.b + 1.5, CB.w * 0.6, 5, { size: 7.5, c: MUTED });
       }
+      if (longU.length) story(longU.map(c => ({ t: 'card', title: c.n, items: [H_(`${c.n} · ${c.h}`, { size: 11 }), { t: 'p', text: c.u, size: 10 }] })), { cols: 2, title: 'Les usages de chaque teinte', lab: BRANDS[k].nom });
     }
     function questionReveal() {
       /* question to the audience, then the key figures */
@@ -271,80 +331,86 @@
     }
     function typoPages(k) {
       const B = ACT.brands[k], fonts = B.fonts.length ? B.fonts : [{ n: 'Texte', family: 'Poppins', r: [], u: '' }];
-      const n = fonts.length, per = Math.min(3, n);
+      const n = fonts.length, longF = [];
       for (let i = 0; i < n; i += 3) {
         const part = fonts.slice(i, i + 3), p = content(i ? 'Les typographies (suite)' : (n === 1 ? `${fonts[0].family} porte tous les textes` : `${n} typographies, un rôle chacune`), BRANDS[k].nom);
         const cw = (CB.w - (part.length - 1) * 8) / part.length;
         part.forEach((f, j) => { const x = CB.x + j * (cw + 8), y = p.y, h = CB.b - y; card(x, y, cw, h);
-          box((f.n || 'Police').toUpperCase(), x + 8, y + 7, cw - 16, 5, { size: 8, w: 600, c: label, cs: 0.4 });
-          doc.setFont(SPEC[f.family] || (f.family === 'Poppins' ? W(700) : W(700)), 'normal'); doc.setFontSize(Math.min(78, cw * 0.9)); ink(T.deep); doc.text('Aa', X(x + 8), Y(y + 15), { baseline: 'top' });
-          box(f.family, x + 8, y + 50, cw - 16, 9, { size: 16, min: 11, w: 600, c: INK });
+          box((f.n || 'Police').toUpperCase(), x + 8, y + 7, cw - 16, 5, { size: 8, min: 6.5, w: 600, c: label, cs: 0.4, label: 'Rôle de la typographie' });
+          doc.setFont(SPEC[f.family] || W(700), 'normal'); doc.setFontSize(Math.min(78, cw * 0.9)); ink(T.deep); doc.text('Aa', X(x + 8), Y(y + 15), { baseline: 'top' });
+          box(f.family, x + 8, y + 50, cw - 16, 9, { size: 16, min: 9, w: 600, c: INK, label: 'Typographie' });
           if (!SPEC[f.family] && f.family !== 'Poppins') box('Spécimen affiché en Poppins : la police n\'est pas intégrable au PDF.', x + 8, y + 60, cw - 16, 8, { size: 7.5, c: MUTED });
-          box(f.u || '', x + 8, y + 70, cw - 16, h - 108, { size: 10, min: 8, c: INK, lh: 1.45 });
+          const room = h - 108;
+          if (f.u && fitLines(f.u, cw - 16, room, { size: 10, min: 8, lh: 1.45 }).trunc) { longF.push(f); box('Description détaillée dans les pages suivantes.', x + 8, y + 70, cw - 16, room, { size: 8.5, c: MUTED }); }
+          else box(f.u || '', x + 8, y + 70, cw - 16, room, { size: 10, min: 8, c: INK, lh: 1.45 });
           stroke(FILET); doc.setLineWidth(0.25); doc.line(X(x + 8), Y(y + h - 34), X(x + cw - 8), Y(y + h - 34));
           box('ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789 éèàçù « » € %', x + 8, y + h - 30, cw - 16, 24, { size: 10.5, min: 6.5, w: 500, f: SPEC[f.family], c: T.deep, lh: 1.5 }); });
       }
+      if (longF.length) story(longF.map(f => ({ t: 'card', title: f.n || f.family, items: [H_(`${f.n || 'Police'} · ${f.family}`, { size: 11 }), { t: 'p', text: f.u, size: 10 }] })), { cols: 2, title: 'Le rôle de chaque typographie', lab: BRANDS[k].nom });
+      /* scale + weights */
       const p = content('Une échelle fixe hiérarchise chaque écran', BRANDS[k].nom);
       const lw = CB.w * 0.6 - 38 - 50; let y = p.y;
       B.scale.forEach(s => { const sz = Math.min(s.s * 0.62, 26); const h = Math.max(9, sz * PT * 1.25 + 4);
         if (y + h > CB.b) y = content('Une échelle fixe hiérarchise chaque écran (suite)', BRANDS[k].nom).y;
-        box(s.n, CB.x, y, 34, h, { size: 9, w: 600, c: INK, v: 'middle' }); box(s.ex, CB.x + 38, y, lw, h, { size: sz, min: 7, w: s.w, c: T.deep, v: 'middle', lh: 1.1 }); box(s.sp, CB.x + 38 + lw + 4, y, 44, h, { size: 8.5, c: MUTED, v: 'middle', a: 'right' });
+        box(s.n, CB.x, y, 34, h, { size: 9, min: 6.5, w: 600, c: INK, v: 'middle', label: 'Niveau typographique' }); box(s.ex, CB.x + 38, y, lw, h, { size: sz, min: 7, w: s.w, c: T.deep, v: 'middle', lh: 1.1, label: `Exemple du niveau « ${s.n} »` }); box(s.sp, CB.x + 38 + lw + 4, y, 44, h, { size: 8.5, min: 6.5, c: MUTED, v: 'middle', a: 'right', label: `Spécification du niveau « ${s.n} »` });
         y += h + 1; stroke(FILET); doc.setLineWidth(0.25); doc.line(X(CB.x), Y(y), X(CB.x + 38 + lw + 48), Y(y)); y += 2; });
-      if (doc.getCurrentPageInfo().pageNumber !== p.page) doc.setPage(p.page);
+      const last = pageNo;
+      if (pageNo !== p.page) { doc.setPage(p.page); pageNo = p.page; }
       const wx = CB.x + CB.w * 0.64, ww = CB.x + CB.w - wx; let wy = p.y; card(wx, wy, ww, CB.b - wy);
       box('GRAISSES', wx + 7, wy + 7, ww - 14, 5, { size: 8, w: 600, c: label, cs: 0.4 }); wy += 16;
       const wst = Math.min(13, (CB.b - 3 - wy) / Math.max(1, B.weights.length)), wsc = wst / 13;
-      B.weights.forEach(w => { box(`${w.n} ${w.w}`, wx + 7, wy, ww - 14, 6 * wsc, { size: 11 * Math.max(0.7, wsc), min: 7, w: w.w, c: INK }); box(w.u, wx + 7, wy + 6 * wsc, ww - 14, 5 * wsc, { size: 8 * Math.max(0.8, wsc), min: 6.5, c: MUTED }); wy += wst; });
-      doc.setPage(doc.getNumberOfPages()); pageNo = doc.getNumberOfPages();
-      const rules = [...B.typoDo.map(t => [t, true]), ...B.typoDont.map(t => [t, false])];
-      if (rules.length) flow(rules, { cols: 2, title: 'Le texte suit cinq repères de mise en forme'.replace('cinq', rules.length === 1 ? 'un' : String(rules.length)), lab: BRANDS[k].nom,
-        measure: ([t], w) => Math.max(6, need(t, w - 9, 11)), render: ([t, ok], x, y, w, h) => { mark(x, y + 0.6, ok); box(t, x + 8, y, w - 9, h, { size: 11, min: 9 }); } });
+      B.weights.forEach(w => { box(`${w.n} ${w.w}`, wx + 7, wy, ww - 14, 6 * wsc, { size: 11 * Math.max(0.7, wsc), min: 6.5, w: w.w, c: INK, label: 'Graisse' }); box(w.u, wx + 7, wy + 6 * wsc, ww - 14, 5 * wsc, { size: 8 * Math.max(0.8, wsc), min: 6, c: MUTED, label: `Usage de la graisse ${w.n}` }); wy += wst; });
+      doc.setPage(last); pageNo = last;
+      const rules = [...B.typoDo.map(t => P_(t, true, { size: 11, gap: 4.5 })), ...B.typoDont.map(t => P_(t, false, { size: 11, gap: 4.5 }))];
+      story(rules, { cols: 2, title: `Le texte suit ${rules.length === 1 ? 'un repère' : rules.length + ' repères'} de mise en forme`, lab: BRANDS[k].nom });
     }
     function spacePages(k) {
       const B = ACT.brands[k], p = content('Les espacements suivent une échelle unique', BRANDS[k].nom);
-      let y = p.y; if (B.spaceNote) y += box(B.spaceNote, CB.x, y, CB.w * 0.7, 12, { size: 10.5, min: 9, c: MUTED, lh: 1.45 }) + 6;
+      let y = p.y;
+      const noteFits = !B.spaceNote || !fitLines(B.spaceNote, CB.w * 0.7, 12, { size: 10.5, min: 9, lh: 1.45 }).trunc;
+      if (B.spaceNote && noteFits) y += box(B.spaceNote, CB.x, y, CB.w * 0.7, 12, { size: 10.5, min: 9, c: MUTED, lh: 1.45 }) + 6;
       const mx = Math.max(64, ...B.spaces.map(s => s.v)), bw = 70;
       const sst = Math.max(5.5, Math.min(9.5, (CB.b - y) / Math.max(1, B.spaces.length)));
-      B.spaces.forEach(s => { if (y + 5 > CB.b) { warns.push(s.u); return; } box(`${s.v} px`, CB.x, y, 22, 7, { size: 10, w: 600, c: T.deep, v: 'middle' }); rect(CB.x + 26, y + 2, Math.max(1, s.v / mx * bw), 3, T.accent === T.deep ? T.action : T.accent, 1.5); box(s.u, CB.x + 26 + bw + 6, y, CB.w * 0.62 - bw - 32, Math.max(5, sst - 1.5), { size: 9.5, min: 7, c: INK, v: 'middle' }); y += sst; });
-      const rx = CB.x + CB.w * 0.66, rw = CB.w * 0.34; let ry = p.y + (B.spaceNote ? 18 : 0);
+      B.spaces.forEach(s => { if (y + 5 > CB.b) { y = content('Les espacements suivent une échelle unique (suite)', BRANDS[k].nom).y; }
+        box(`${s.v} px`, CB.x, y, 22, 7, { size: 10, w: 600, c: T.deep, v: 'middle' }); rect(CB.x + 26, y + 2, Math.max(1, s.v / mx * bw), 3, T.accent === T.deep ? T.action : T.accent, 1.5);
+        box(s.u, CB.x + 26 + bw + 6, y, CB.w * 0.62 - bw - 32, Math.max(5, sst - 1.5), { size: 9.5, min: 7, c: INK, v: 'middle', label: `Usage de l'espacement ${s.v} px` }); y += sst; });
+      const last = pageNo; if (pageNo !== p.page) { doc.setPage(p.page); pageNo = p.page; }
+      const rx = CB.x + CB.w * 0.66, rw = CB.w * 0.34; let ry = p.y + (B.spaceNote && noteFits ? 18 : 0);
       box('ARRONDIS', rx, ry, rw, 5, { size: 8, w: 600, c: label, cs: 0.4 }); ry += 9;
       const rst = Math.max(11, Math.min(23, (CB.b - ry) / Math.max(1, B.radii.length))), rs = rst - 5;
-      B.radii.forEach(r => { if (ry + rs > CB.b) { warns.push(r.u); return; } const rr = Math.min(r.v >= 999 ? rs / 2 : r.v * 0.35, rs / 2); fill(T.soft); doc.roundedRect(X(rx), Y(ry), rs, rs, rr, rr, 'F');
-        box(r.v >= 999 ? 'Pilule' : `${r.v} px`, rx + rs + 5, ry, rw - rs - 5, rs * 0.45, { size: 10.5, min: 8, w: 600, c: T.deep }); box(r.u, rx + rs + 5, ry + rs * 0.45, rw - rs - 5, rs * 0.55, { size: 9, min: 7, c: MUTED }); ry += rst; });
+      B.radii.forEach(r => { if (ry + rs > CB.b) { annex.push({ label: `Arrondi ${r.v >= 999 ? 'pilule' : r.v + ' px'}`, text: r.u || '' }); return; } const rr = Math.min(r.v >= 999 ? rs / 2 : r.v * 0.35, rs / 2); fill(T.soft); doc.roundedRect(X(rx), Y(ry), rs, rs, rr, rr, 'F');
+        box(r.v >= 999 ? 'Pilule' : `${r.v} px`, rx + rs + 5, ry, rw - rs - 5, rs * 0.45, { size: 10.5, min: 8, w: 600, c: T.deep }); box(r.u, rx + rs + 5, ry + rs * 0.45, rw - rs - 5, rs * 0.55, { size: 9, min: 7, c: MUTED, label: `Usage de l'arrondi ${r.v >= 999 ? 'pilule' : r.v + ' px'}` }); ry += rst; });
+      doc.setPage(last); pageNo = last;
+      if (B.spaceNote && !noteFits) story([{ t: 'card', items: [H_('Règle générale'), { t: 'p', text: B.spaceNote, size: 10.5 }] }], { cols: 1, title: 'La règle d\'espacement en détail', lab: BRANDS[k].nom });
     }
     function creaPages() {
       Object.entries(CREAS).forEach(([k, c]) => {
-        const rules = (ACT.creas[k] || { rules: [] }).rules;
-        const p = content(`${c.t} : ${c.prio.toLowerCase()}`, 'Créations');
-        const lw = CB.w * 0.6; let y = p.y;
-        rules.forEach(r => { const h = Math.max(6, need(r, lw - 9, 10.5)); if (y + h > CB.b) y = content(`${c.t} (suite)`, 'Créations').y; mark(CB.x, y + 0.4, true); box(r, CB.x + 8, y, lw - 9, Math.min(h, CB.b - y), { size: 10.5, min: 8.5 }); y += h + 4.5; });
-        const sx = CB.x + lw + 10, sw = CB.w - lw - 10; let sy = p.y;
-        card(sx, sy, sw, 42, T.deep); box('GAMIFICATION', sx + 7, sy + 6, sw - 14, 5, { size: 8, w: 600, c: onDark(T.deep), cs: 0.4 }); box(c.game, sx + 7, sy + 13, sw - 14, 26, { size: 9.5, min: 7.5, c: onDark(T.deep), lh: 1.4 }); sy += 48;
-        const gw = (sw - 6) / 2, gh = (CB.b - sy - 6 * 2) / 3;
-        c.specs.slice(0, 6).forEach((s, i) => { const x = sx + (i % 2) * (gw + 6), y2 = sy + Math.floor(i / 2) * (gh + 6); card(x, y2, gw, gh); box(s[0], x + 5, y2 + 4, gw - 10, 5, { size: 7.5, c: MUTED }); box(s[1], x + 5, y2 + 10, gw - 10, gh - 13, { size: 10, min: 7.5, w: 600, c: INK, lh: 1.25 }); });
+        const rules = (ACT.creas[k] || { rules: [] }).rules, lw = CB.w * 0.6;
+        const sx = CB.x + lw + 10, sw = CB.w - lw - 10;
+        story(rules.length ? rules.map(r => P_(r, true, { gap: 4.5 })) : [P_('Aucune règle définie.', undefined, { c: MUTED })], {
+          title: `${c.t} : ${c.prio.toLowerCase()}`, lab: 'Créations', cols: 2, firstCols: [{ x: CB.x, w: lw }],
+          decorate: i => { if (i) return; let sy = titleY(`${c.t} : ${c.prio.toLowerCase()}`);
+            card(sx, sy, sw, 42, T.deep); box('GAMIFICATION', sx + 7, sy + 6, sw - 14, 5, { size: 8, w: 600, c: onDark(T.deep), cs: 0.4 }); box(c.game, sx + 7, sy + 13, sw - 14, 26, { size: 9.5, min: 7.5, c: onDark(T.deep), lh: 1.4 }); sy += 48;
+            const gw = (sw - 6) / 2, gh = (CB.b - sy - 6 * 2) / 3;
+            c.specs.slice(0, 6).forEach((s, j) => { const x = sx + (j % 2) * (gw + 6), y2 = sy + Math.floor(j / 2) * (gh + 6); card(x, y2, gw, gh); box(s[0], x + 5, y2 + 4, gw - 10, 5, { size: 7.5, c: MUTED }); box(s[1], x + 5, y2 + 10, gw - 10, gh - 13, { size: 10, min: 7.5, w: 600, c: INK, lh: 1.25 }); }); }
+        });
       });
     }
     function rulePages() {
       const gold = ACT.rules.gold;
-      if (gold.length) { const per = 8; for (let i = 0; i < gold.length; i += per) {
-        const part = gold.slice(i, i + per), p = content(i ? 'Les règles d\'or (suite)' : `${gold.length === 1 ? 'Une règle d\'or rend' : nbTxt(gold.length).replace(/^./, m => m.toUpperCase()) + ' règles d\'or rendent'} une production livrable`, 'Règles d\'or');
-        const cols = 4, cw = (CB.w - 3 * 8) / cols, ch = (CB.b - p.y - 8) / 2;
-        part.forEach((g, j) => { const x = CB.x + (j % cols) * (cw + 8), y = p.y + Math.floor(j / cols) * (ch + 8); card(x, y, cw, ch);
-          box(String(i + j + 1).padStart(2, '0'), x + 6, y + 6, cw - 12, 12, { size: 22, w: 700, c: label }); box(g.t, x + 6, y + 20, cw - 12, 12, { size: 11.5, min: 9, w: 600, c: T.deep, lh: 1.2 }); box(g.d, x + 6, y + 34, cw - 12, ch - 38, { size: 9, min: 7.2, c: INK, lh: 1.4 }); }); } }
-      const red = (typeof REDAC !== 'undefined' ? REDAC : []).map(r => [r.t, r.ok]);
-      if (red.length) flow(red, { cols: 2, title: 'Vous écrivez court, direct et au vouvoiement', lab: 'Rédaction', measure: ([t], w) => Math.max(6, need(t, w - 9, 11)), render: ([t, ok], x, y, w, h) => { mark(x, y + 0.6, ok); box(t, x + 8, y, w - 9, h, { size: 11, min: 9 }); } });
-      if (ACT.qa.length) flow(ACT.qa, { cols: 2, title: 'Le contrôle qualité arrête toute production défaillante', lab: 'Contrôle qualité', measure: (q, w) => Math.max(6, need(q.t, w - 9, 11)), render: (q, x, y, w, h) => { mark(x, y + 0.6, q.ok); box(q.t, x + 8, y, w - 9, h, { size: 11, min: 9 }); } });
-      const laws = ACT.rules.laws;
-      if (laws.length) flow(laws, { cols: 3, gap: 6, title: 'Les lois de l\'UX guident chaque arbitrage', lab: 'Lois UX',
-        measure: (l, w) => 14 + need(l.p, w - 12, 8.5, 400, 1.35) + (l.a ? 9 + need(l.a, w - 12, 8.5, 400, 1.35) : 0) + 5,
-        render: (l, x, y, w, h) => { card(x, y, w, h); let yy = y + 5; yy += box(l.n, x + 6, yy, w - 12, 7, { size: 11, min: 9, w: 600, c: T.deep }) + 2; yy += box(l.p, x + 6, yy, w - 12, y + h - yy - 3, { size: 8.5, min: 7, c: MUTED }) + 3;
-          if (l.a) { stroke(FILET); doc.setLineWidth(0.25); doc.line(X(x + 6), Y(yy), X(x + w - 6), Y(yy)); yy += 2.5; box('CHEZ HYMPYR', x + 6, yy, w - 12, 4, { size: 6.5, w: 600, c: label, cs: 0.3 }); yy += 4.5; box(l.a, x + 6, yy, w - 12, y + h - yy - 3, { size: 8.5, min: 7, c: INK }); } } });
-      const copy = ACT.rules.copy;
-      if (copy.length) flow(copy, { cols: 2, gap: 6, title: 'Des structures éprouvées pour convaincre', lab: 'Copywriting',
-        measure: (c, w) => 14 + need(c.p, w - 12, 8.5) + c.s.reduce((a, [x, y]) => a + need(`0. ${x}${y ? ' : ' + y : ''}`, w - 12, 8.5, 400, 1.3) + 0.8, 0) + (c.w ? 4 + need('Vigilance : ' + c.w, w - 12, 8) : 0) + 6,
-        render: (c, x, y, w, h) => { card(x, y, w, h); let yy = y + 5; yy += box(c.n, x + 6, yy, w - 12, 7, { size: 11, min: 9, w: 600, c: T.deep }) + 2; yy += box(c.p, x + 6, yy, w - 12, 20, { size: 8.5, min: 7, c: MUTED }) + 2;
-          c.s.forEach(([a, b], i) => { const t = `${i + 1}. ${a}${b ? ' : ' + b : ''}`, sh = need(t, w - 12, 8.5, 400, 1.3); if (yy + sh > y + h - 2) return; box(t, x + 6, yy, w - 12, sh, { size: 8.5, min: 7, c: INK, lh: 1.3 }); yy += sh + 0.8; });
-          if (c.w && yy + 6 < y + h) { yy += 2; box('Vigilance : ' + c.w, x + 6, yy, w - 12, y + h - yy - 2, { size: 8, min: 6.5, c: '#A3341F' }); } } });
+      story(gold.map((g, i) => ({ t: 'card', title: g.t, items: [{ t: 'p', text: String(i + 1).padStart(2, '0'), size: 20, w: 700, c: label, gap: 1.5, lh: 1.1 }, H_(g.t, { size: 11.5, lh: 1.25, gap: 2.5 }), { t: 'p', text: g.d, size: 9.5, lh: 1.45 }] })),
+        { cols: 4, title: `${gold.length === 1 ? 'Une règle d\'or rend' : nbTxt(gold.length).replace(/^./, m => m.toUpperCase()) + ' règles d\'or rendent'} une production livrable`, lab: 'Règles d\'or' });
+      const red = typeof REDAC !== 'undefined' ? REDAC : [];
+      story(red.map(r => P_(r.t, r.ok, { size: 11, gap: 4.5 })), { cols: 2, title: 'Vous écrivez court, direct et au vouvoiement', lab: 'Rédaction' });
+      story(ACT.qa.map(q => P_(q.t, q.ok, { size: 11, gap: 4.5 })), { cols: 2, title: 'Le contrôle qualité arrête toute production défaillante', lab: 'Contrôle qualité' });
+      story(ACT.rules.laws.map(l => ({ t: 'card', title: l.n, items: [H_(l.n, { size: 11, gap: 2 }), l.p ? { t: 'p', text: l.p, size: 8.8, c: MUTED, lh: 1.4 } : null,
+        l.a ? { t: 'p', text: 'CHEZ HYMPYR', size: 6.5, w: 600, c: label, cs: 0.3, gap: 1 } : null, l.a ? { t: 'p', text: l.a, size: 8.8, lh: 1.4 } : null] })),
+        { cols: 3, title: 'Les lois de l\'UX guident chaque arbitrage', lab: 'Lois UX' });
+      story(ACT.rules.copy.map(c => ({ t: 'card', title: c.n, items: [H_(c.n, { size: 11, gap: 2 }), c.p ? { t: 'p', text: c.p, size: 8.8, c: MUTED, lh: 1.4 } : null,
+        ...c.s.map(([a, b], i) => ({ t: 'p', text: `${i + 1}. ${a}${b ? ' : ' + b : ''}`, size: 8.8, lh: 1.35, gap: 1.2 })),
+        c.a ? { t: 'p', text: 'CHEZ HYMPYR', size: 6.5, w: 600, c: label, cs: 0.3, gap: 1 } : null, c.a ? { t: 'p', text: c.a, size: 8.8, lh: 1.4 } : null,
+        c.w ? { t: 'p', text: 'Vigilance : ' + c.w, size: 8.5, c: '#A3341F', lh: 1.4 } : null] })),
+        { cols: 2, title: 'Des structures éprouvées pour convaincre', lab: 'Copywriting' });
     }
     function quizPages() {
       const Q = (typeof QUIZ !== 'undefined' ? QUIZ : []).slice(0, 10);
@@ -395,7 +461,7 @@
     const parts = [];
     if (global) {
       parts.push(['Le groupe', 'Quatre marques, une exigence commune. Chaque marque garde sa palette, le socle reste partagé.', () => { brandOverview(); }]);
-      BRAND_KEYS.filter(k => k !== 'groupe').forEach(k => parts.push([BRANDS[k].nom, `Logotype, palette et typographies de ${BRANDS[k].nom}.`, () => { logoPages(k); palettePages(k, `La palette ${BRANDS[k].court} tient en ${ACT.brands[k].colors.length} teinte${ACT.brands[k].colors.length > 1 ? 's' : ''}`); typoPages(k); }]));
+      BRAND_KEYS.filter(k => k !== 'groupe').forEach(k => parts.push([BRANDS[k].nom, `Logotype, palette et typographies de ${BRANDS[k].nom}.`, () => { logoPages(k); palettePages(k, `La palette ${BRANDS[k].court} tient en ${ACT.brands[k].colors.length} teinte${ACT.brands[k].colors.length > 1 ? 's' : ''}`); typoPages(k); const g = ACT.brands.groupe, b = ACT.brands[k]; if (JSON.stringify([b.spaces, b.radii, b.spaceNote]) !== JSON.stringify([g.spaces, g.radii, g.spaceNote])) spacePages(k); }]));
       parts.push(['Socle commun', 'Les nuances de gris servent seules les productions qui concernent plusieurs marques.', () => { logoPages('groupe'); palettePages('groupe', 'Les nuances de gris sont communes à toutes les marques'); questionReveal(); typoPages('groupe'); spacePages('groupe'); }]);
     } else {
       parts.push(['Logotype', 'Le logo signe chaque production. Il se place en haut à gauche et garde toujours sa zone de protection.', () => logoPages(KEY)]);
@@ -410,7 +476,7 @@
     parts.forEach(([t, intro, fn], i) => { section(i + 1, t, intro); fn(); step(pct0 + Math.round((i + 1) / parts.length * 45), 'Mise en page : ' + t); });
 
     /* back cover */
-    cur = null; page('dark');
+    flushAnnex(); cur = null; page('dark');
     drawLogo(global ? 'groupe' : KEY, M, 14, 12, true, 90);
     alpha(0.16); fill(T.soft); doc.circle(X(TW * 0.3), Y(TH * 1.05), TH * 0.6, 'F'); alpha(1);
     box('Merci', M, 70, 150, 30, { size: 60, min: 30, w: 700, c: onDark(T.deep), lh: 1 });
