@@ -223,6 +223,24 @@ html[data-theme="dark"] .sh{filter:blur(80px)}
 .role:hover{color:var(--text);border-color:var(--hair-2)}
 .role.on{background:var(--primary);color:var(--on-primary);border-color:transparent}
 .ed-note{font-size:12.5px;color:var(--muted);line-height:1.5}
+.ed-lh{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ed-cnt{font-size:11.5px;font-weight:600;color:var(--muted);background:var(--tile);border-radius:999px;padding:2px 9px}
+.ed-items{display:flex;flex-direction:column;gap:10px}
+.ed-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:12px;border-radius:14px;background:color-mix(in srgb,var(--text) 3%,transparent);border:1px solid var(--hair);transition:border-color .25s}
+.ed-item:focus-within{border-color:color-mix(in srgb,var(--link) 55%,transparent)}
+.ed-fields{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.ed-f{display:flex;flex-direction:column;gap:4px;flex:1 1 120px;min-width:0}
+.ed-f.full{flex-basis:100%}
+.ed-fl{font-size:11.5px;color:var(--muted);font-weight:500}
+.ed-f .input{min-height:40px;padding:8px 12px;font-size:13.5px;border-radius:12px;width:100%}
+.ed-f textarea.input{resize:vertical;line-height:1.5}
+.ed-item .ed-sample,.ed-item .ed-logo,.ed-item .msg,.ed-item .btn-row{flex-basis:100%}
+.ed-ops{display:flex;flex-direction:column;gap:4px}
+.ed-ops .icon-btn{width:32px;height:32px}
+.ed-ops .icon-btn svg{width:15px;height:15px}
+.ed-ops .icon-btn[disabled]{opacity:.35;pointer-events:none}
+.file-btn svg.i{width:15px;height:15px}
+.ed-card .ed-item textarea.input{min-height:60px;max-height:260px;padding:8px 12px;font-size:13.5px;field-sizing:content;resize:vertical}
 .ed-warn{font-size:12.5px;color:var(--err);display:flex;flex-direction:column;gap:4px}
 .ed-ok{font-size:12.5px;color:var(--ok)}
 .ed-card textarea.input{min-height:84px;padding:10px 12px;font-size:14px;border-radius:12px;line-height:1.5}
@@ -834,7 +852,9 @@ const I={
   flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
   compass:'<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   refresh:'<path d="M20 11a8 8 0 0 0-14.3-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.5L20 16M20 20v-4h-4"/>',
-  send:'<path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/>'
+  send:'<path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  upload:'<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 20h16"/>'
 };
 const ic=(n,cls='i')=>`<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
 
@@ -1049,22 +1069,52 @@ const DEFAULT_ROLES={
   granules:[['profond'],['action'],['accent'],['clair']]
 };
 BRAND_KEYS.forEach(k=>BRANDS[k].colors.forEach((c,i)=>c.r=[...(DEFAULT_ROLES[k][i]||[])]));
+const DEF_IDENT={
+  fonts:[{n:'Titres',family:'Poppins',src:'google',r:['titres'],u:'Titres, chiffres clés et logotype.'},{n:'Texte courant',family:'Poppins',src:'google',r:['texte'],u:'Corps de texte, libellés, légendes. Géométrique, lisible et chaleureuse, à l\'écran comme à l\'impression.'}],
+  weights:[[300,'Light','Grands chiffres décoratifs'],[400,'Regular','Corps de texte'],[500,'Medium','Libellés, navigation'],[600,'SemiBold','Titres 2 et 3, boutons'],[700,'Bold','Titres 1, chiffres clés'],[800,'ExtraBold','Logotype uniquement']].map(([w,n,u])=>({w,n,u})),
+  scale:[['Affichage','Charte Hympyr','48 / 56 · 700',48,700],['Titre 1','Préparer une tournée','36 / 44 · 700',36,700],['Titre 2','Adresse de livraison','28 / 36 · 600',28,600],['Titre 3','Délai de livraison','20 / 28 · 600',20,600],['Corps','La distance routière réelle détermine les frais.','16 / 26 · 400',16,400],['Légende','Prix présentés en TTC, avec le détail HT.','13 / 20 · 400',13,400],['Étiquette','ÉTAPE 2','12 / 16 · 600 · +16 %',12,600]].map(([n,ex,sp,z,w])=>({n,ex,sp,s:z,w})),
+  typoDo:['Interlignage de 1,5 à 1,6 pour le corps, 1,1 à 1,25 pour les titres.','Lignes de 50 à 75 caractères pour les paragraphes.','Étiquettes en capitales avec un espacement de 14 à 16 %, comme « ÉTAPE 2 ».','Nombres au format français : 438,45 €, 1 240 px, 09/11/2026, 14 h 30.'],
+  typoDont:['Pas d\'italique décoratif, pas de texte souligné hors liens, pas de capitales sur plus de trois mots.'],
+  logoIntro:'Symbole carré à gauche, nom HYMPYR en capitales, nom de la marque espacé dessous dans la couleur d\'accent. Version sur fond sombre et sur fond Craie.',
+  logoDo:['Zone de protection égale à la hauteur du symbole sur chaque côté.','Taille minimale : 24 px de haut à l\'écran, 12 mm à l\'impression.','Toujours en haut à gauche dans les outils, les sites et les présentations.','Sur fond chargé ou photo, placer le logo dans un encart en verre dépoli.'],
+  logoDont:['Déformer, incliner ou recadrer le logotype.','Le recolorer hors de la palette de sa marque.','Ajouter une ombre, un contour ou un effet.','Associer le symbole d\'une marque au nom d\'une autre.'],
+  spaceNote:'Aucune valeur hors de cette échelle. Les encarts ne se touchent jamais : 16 px minimum entre deux encarts.',
+  spaces:[[4,'Écart icône et texte'],[8,'Intérieur des petits composants'],[12,'Entre éléments d\'une liste'],[16,'Entre encarts, marge mobile'],[24,'Intérieur des encarts, entre groupes'],[32,'Intérieur des grands panneaux'],[48,'Entre sections d\'un écran'],[64,'Rythme vertical des sites']].map(([v,u])=>({v,u})),
+  radii:[[12,'Champs, puces'],[16,'Tuiles internes'],[24,'Encarts en verre'],[999,'Boutons en pilule']].map(([v,u])=>({v,u}))
+};
+const DEF_LOGOS={energies:[{n:'Sur fond clair',fond:'clair',url:'assets/hympyr-energies-fonce.svg'},{n:'Sur fond sombre',fond:'sombre',url:'assets/hympyr-energies-clair.svg'}]};
 const DEFAULTS={
-  brands:Object.fromEntries(BRAND_KEYS.map(k=>[k,{colors:clone(BRANDS[k].colors)}])),
-  logos:{energies:{light:'assets/hympyr-energies-fonce.svg',dark:'assets/hympyr-energies-clair.svg'}},
-  fonts:{titres:{family:'Poppins',src:'google'},texte:{family:'Poppins',src:'google'}},
-  rules:{gold:clone(GOLD),laws:clone(LAWS),copy:clone(COPY)}
+  brands:Object.fromEntries(BRAND_KEYS.map(k=>[k,{colors:clone(BRANDS[k].colors),...clone(DEF_IDENT),logos:clone(DEF_LOGOS[k]||[{n:'Sur fond clair',fond:'clair',url:''},{n:'Sur fond sombre',fond:'sombre',url:''}])}])),
+  creas:Object.fromEntries(Object.entries(CREAS).map(([k,c])=>[k,{rules:clone(c.rules)}])),
+  rules:{gold:clone(GOLD),laws:clone(LAWS),copy:clone(COPY)},
+  qa:[{t:'Une image saute, un bloc apparaît sans fondu, un écran change d\'un coup.',ok:false},{t:'Une animation saccade ou ralentit l\'interface sur un ordinateur standard.',ok:false},{t:'Un changement de hauteur fait sauter la page au lieu de s\'étirer.',ok:false},{t:'Préférence « réduire les animations » respectée par des fondus courts.',ok:true}]
 };
 let CONF=clone(DEFAULTS), ACT=CONF, CONF_META=null;
+const cut=(v,n)=>String(v??'').slice(0,n);
+const URLOK=u=>/^https:\/\//.test(u||'')||/^assets\/[\w.-]+$/.test(u||'');
+const strList=(a,n)=>Array.isArray(a)?a.map(x=>cut(x,n).trim()).filter(Boolean).slice(0,60):null;
+const cleanFam=f=>String(f||'').replace(/["'<>;{}\\]/g,'').trim().slice(0,60);
+const SRCOK=x=>x==='google'||/^https:\/\//.test(x||'');
+const W100=v=>Math.min(900,Math.max(100,Math.round((+v||400)/100)*100));
 function normConf(d){
   const c=clone(DEFAULTS); if(!d||typeof d!=='object') return c;
-  BRAND_KEYS.forEach(k=>{const cs=d.brands&&d.brands[k]&&d.brands[k].colors;
-    if(Array.isArray(cs)&&cs.length) c.brands[k].colors=cs.filter(x=>x&&/^#[0-9a-f]{6}$/i.test(x.h)).map(x=>({n:String(x.n||'Couleur').slice(0,40),h:x.h.toUpperCase(),u:String(x.u||'').slice(0,160),r:Array.isArray(x.r)?x.r.filter(r=>ROLES.some(R=>R[0]===r)):[]}));
-    if(!c.brands[k].colors.length) c.brands[k].colors=clone(DEFAULTS.brands[k].colors);});
-  if(d.logos&&typeof d.logos==='object') BRAND_KEYS.forEach(k=>{const l=d.logos[k];
-    if(l){const dflt=DEFAULTS.logos[k]||{};c.logos[k]={light:/^https:\/\//.test(l.light||'')?l.light:(dflt.light||''),dark:/^https:\/\//.test(l.dark||'')?l.dark:(dflt.dark||'')}}});
-  ['titres','texte'].forEach(t=>{const f=d.fonts&&d.fonts[t];
-    if(f&&f.family) c.fonts[t]={family:String(f.family).replace(/["'<>;{}\\]/g,'').trim().slice(0,60)||'Poppins',src:(f.src==='google'||/^https:\/\//.test(f.src||''))?f.src:'google'}});
+  const oldFonts=d.fonts&&typeof d.fonts==='object'?d.fonts:null;
+  BRAND_KEYS.forEach(k=>{
+    const B=(d.brands&&d.brands[k])||{}, o=c.brands[k];
+    if(Array.isArray(B.colors)&&B.colors.length){o.colors=B.colors.filter(x=>x&&/^#[0-9a-f]{6}$/i.test(x.h)).map(x=>({n:cut(x.n||'Couleur',40),h:x.h.toUpperCase(),u:cut(x.u,160),r:Array.isArray(x.r)?x.r.filter(r=>ROLES.some(R=>R[0]===r)):[]}));
+      if(!o.colors.length) o.colors=clone(DEFAULTS.brands[k].colors);}
+    if(Array.isArray(B.fonts)) o.fonts=B.fonts.map(x=>({n:cut(x.n,40),family:cleanFam(x.family)||'Poppins',src:SRCOK(x.src)?x.src:'google',r:Array.isArray(x.r)?x.r.filter(r=>r==='titres'||r==='texte'):[],u:cut(x.u,200)}));
+    else if(oldFonts) ['titres','texte'].forEach((t,i)=>{const f=oldFonts[t]; if(f&&f.family){o.fonts[i].family=cleanFam(f.family)||'Poppins'; o.fonts[i].src=SRCOK(f.src)?f.src:'google'}});
+    if(Array.isArray(B.weights)) o.weights=B.weights.map(x=>({w:W100(x.w),n:cut(x.n,30),u:cut(x.u,120)}));
+    if(Array.isArray(B.scale)) o.scale=B.scale.map(x=>({n:cut(x.n,30),ex:cut(x.ex,80),sp:cut(x.sp,40),s:Math.min(160,Math.max(8,Math.round(+x.s||16))),w:W100(x.w)}));
+    ['typoDo','typoDont','logoDo','logoDont'].forEach(key=>{const l=strList(B[key],240); if(l) o[key]=l});
+    ['logoIntro','spaceNote'].forEach(key=>{if(typeof B[key]==='string') o[key]=cut(B[key],400)});
+    if(Array.isArray(B.spaces)) o.spaces=B.spaces.map(x=>({v:Math.min(400,Math.max(0,Math.round(+x.v||0))),u:cut(x.u,120)}));
+    if(Array.isArray(B.radii)) o.radii=B.radii.map(x=>({v:Math.min(999,Math.max(0,Math.round(+x.v||0))),u:cut(x.u,120)}));
+    if(Array.isArray(B.logos)) o.logos=B.logos.map(x=>({n:cut(x.n,40),fond:['clair','sombre'].includes(x.fond)?x.fond:(/^#[0-9a-f]{6}$/i.test(x.fond||'')?x.fond.toUpperCase():'clair'),url:URLOK(x.url)?x.url:''}));
+    else if(d.logos&&d.logos[k]){const l=d.logos[k]; if(URLOK(l.light)) o.logos[0].url=l.light; if(URLOK(l.dark)) o.logos[1].url=l.dark;}
+  });
+  if(d.creas&&typeof d.creas==='object') Object.keys(c.creas).forEach(t=>{const l=d.creas[t]&&strList(d.creas[t].rules,300); if(l) c.creas[t].rules=l});
   if(d.rules&&typeof d.rules==='object'){
     const R=d.rules, T=(v,n)=>String(v??'').trim().slice(0,n);
     const okCat=(cats,v,dflt)=>cats.some(k=>k[0]===v&&k[0]!=='tout')?v:dflt;
@@ -1073,9 +1123,12 @@ function normConf(d){
     if(Array.isArray(R.copy)) c.rules.copy=R.copy.filter(x=>x&&T(x.n,80)).map(x=>({c:okCat(COPY_CATS,x.c,'parcours'),n:T(x.n,80),p:T(x.p,600),
       s:Array.isArray(x.s)?x.s.filter(y=>Array.isArray(y)&&T(y[0],60)).slice(0,8).map(y=>[T(y[0],60),T(y[1],300)]):[],a:T(x.a,700),w:T(x.w,400)}));
   }
+  if(Array.isArray(d.qa)) c.qa=d.qa.map(x=>({t:cut(x&&x.t,240).trim(),ok:!!(x&&x.ok)})).filter(x=>x.t);
   return c;
 }
-function logoSet(k,conf=ACT){const L=conf.logos[k]||{},D=DEFAULTS.logos[k]||{};return {light:L.light||D.light||'',dark:L.dark||D.dark||''}}
+const logoKind=f=>f==='clair'||f==='sombre'?f:(lum(f)<.3?'sombre':'clair');
+function logoSet(k,conf=ACT){const L=conf.brands[k].logos||[];const f=t=>(L.find(x=>x.url&&logoKind(x.fond)===t)||{}).url||'';return {light:f('clair'),dark:f('sombre')}}
+const fontOf=(k,role,conf=ACT)=>{const F=conf.brands[k].fonts||[];return (F.find(f=>f.r.includes(role))||F[0]||{family:'Poppins'}).family};
 function roleHex(k,role,conf=ACT){
   const c=conf.brands[k].colors.find(x=>x.r&&x.r.includes(role)); if(c) return c.h;
   return (DEFAULTS.brands[k].colors.find(x=>x.r.includes(role))||{h:'#5B636A'}).h;
@@ -1103,12 +1156,11 @@ function applyConfig(conf=CONF){
     const dbg=mixHex(deep,'#05070A',.58);
     const link=[acc,soft,'#F5F4F0'].find(c=>ratio(c,dbg)>=4.5)||'#F5F4F0';
     const onMark=ratio(acc,'#FFFFFF')>=3?'#FFFFFF':deep;
-    css+=`html[data-brand="${k}"]{--deep:${deep};--action:${act};--accent:${acc};--soft:${soft};--link-d:${link};${k==='groupe'?'':`--mark:${acc};--on-mark:${onMark};`}}\n`;
+    css+=`html[data-brand="${k}"]{--deep:${deep};--action:${act};--accent:${acc};--soft:${soft};--link-d:${link};--font-head:"${fontOf(k,'titres',conf)}";--font-body:"${fontOf(k,'texte',conf)}";${k==='groupe'?'':`--mark:${acc};--on-mark:${onMark};`}}\n`;
   });
-  css+=`:root{--font-head:"${conf.fonts.titres.family}";--font-body:"${conf.fonts.texte.family}"}`;
   let st=document.getElementById('confStyle'); if(!st){st=document.createElement('style');st.id='confStyle';document.head.appendChild(st)}
   st.textContent=css;
-  Object.values(conf.fonts).forEach(loadFont);
+  BRAND_KEYS.forEach(k=>(conf.brands[k].fonts||[]).forEach(loadFont));
   const m=document.querySelector('meta[name=theme-color]'); if(m) m.content=roleHex(root.dataset.brand,'profond',conf);
 }
 async function loadConfig(){
@@ -1408,65 +1460,61 @@ function renderColors(){
       <div class="tile card"><span class="num">10 %</span><h3>Accent</h3><p>Boutons, liens, pictogrammes, étiquettes. Rare, donc remarqué.</p></div>
     </div></div>`;
 }
+const okLi=t=>`<li><span class="tk">${ic('check')}</span><span>${esc(t)}</span></li>`;
+const noLi=t=>`<li><span class="tk no">${ic('x')}</span><span>${esc(t)}</span></li>`;
+const emptyP=t=>`<p class="muted" style="font-size:14px">${t}</p>`;
 function renderTypo(){
-  const scale=[['Affichage','Charte Hympyr','48 / 56 · 700',48,700],['Titre 1','Préparer une tournée','36 / 44 · 700',36,700],['Titre 2','Adresse de livraison','28 / 36 · 600',28,600],['Titre 3','Délai de livraison','20 / 28 · 600',20,600],['Corps','La distance routière réelle détermine les frais.','16 / 26 · 400',16,400],['Légende','Prix présentés en TTC, avec le détail HT.','13 / 20 · 400',13,400],['Étiquette','ÉTAPE 2','12 / 16 · 600 · +16 %',12,600]];
+  const B=ACT.brands[root.dataset.brand];
+  const fontPanel=f=>`<div class="panel glass"><span class="label">${esc(f.n||'Police')}${f.r.length?' · '+f.r.map(r=>r==='titres'?'titres':'texte courant').join(' et '):''}</span><div class="big-aa" style="margin-top:12px;font-family:'${esc(f.family)}',Poppins,sans-serif">Aa</div>
+    <h2 style="margin-top:16px;font-family:'${esc(f.family)}',Poppins,sans-serif">${esc(f.family)}</h2>${f.u?`<p class="muted" style="margin-top:8px">${esc(f.u)}</p>`:''}
+    <div class="btn-row" style="margin-top:20px">${f.src==='google'?`<a class="btn ghost sm mag" href="https://fonts.google.com/specimen/${encodeURIComponent(f.family).replace(/%20/g,'+')}" target="_blank" rel="noopener">Télécharger ${esc(f.family)}</a>`:`<a class="btn ghost sm mag" href="${esc(f.src)}" target="_blank" rel="noopener">Télécharger le fichier</a>`}</div></div>`;
   $('[data-sub="typo"]').innerHTML=`
     <div class="specimen">
-      <div class="panel glass"><span class="label">Caractère unique</span><div class="big-aa" style="margin-top:12px">Aa</div>
-        <h2 style="margin-top:16px">Poppins</h2><p class="muted" style="margin-top:8px">Géométrique, lisible et chaleureuse. Utilisée par toutes les marques, à l'écran comme à l'impression. Aucune autre typographie n'est autorisée.</p>
-        <div class="btn-row" style="margin-top:20px"><a class="btn ghost sm mag" href="https://fonts.google.com/specimen/Poppins" target="_blank" rel="noopener">Télécharger Poppins</a></div></div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">${B.fonts.length?B.fonts.map(fontPanel).join(''):`<div class="panel glass">${emptyP('Aucune typographie définie pour cette marque.')}</div>`}</div>
       <div class="panel glass"><span class="label">Graisses autorisées</span><div class="weights" style="margin-top:16px">
-        ${[[300,'Light','Grands chiffres décoratifs'],[400,'Regular','Corps de texte'],[500,'Medium','Libellés, navigation'],[600,'SemiBold','Titres 2 et 3, boutons'],[700,'Bold','Titres 1, chiffres clés'],[800,'ExtraBold','Logotype uniquement']].map(w=>`<div><span style="font-weight:${w[0]}">${w[1]} ${w[0]}</span><small>${w[2]}</small></div>`).join('')}
+        ${B.weights.map(w=>`<div><span style="font-weight:${w.w}">${esc(w.n)} ${w.w}</span><small>${esc(w.u)}</small></div>`).join('')||emptyP('Aucune graisse définie.')}
       </div></div>
     </div>
     <div class="panel glass"><div class="panel-head"><div><span class="label">Échelle</span><h2 style="margin-top:6px">Hiérarchie typographique écran</h2>
       <p>Taille / interlignage en pixels. Les titres utilisent la teinte profonde de la marque, le corps de texte le Graphite.</p></div></div>
-      ${scale.map(s=>`<div class="scale-row"><span class="nm">${s[0]}</span><span class="ex" style="font-size:${Math.min(s[3],40)}px;font-weight:${s[4]};${s[0]==='Étiquette'?'letter-spacing:.16em;color:var(--link)':''}">${s[1]}</span><span class="sp">${s[2]}</span></div>`).join('')}
+      ${B.scale.map(x=>`<div class="scale-row"><span class="nm">${esc(x.n)}</span><span class="ex" style="font-size:${Math.min(x.s,40)}px;font-weight:${x.w};${/étiquette/i.test(x.n)?'letter-spacing:.16em;color:var(--link)':''}">${esc(x.ex)}</span><span class="sp">${esc(x.sp)}</span></div>`).join('')||emptyP('Aucun niveau défini.')}
     </div>
     <div class="panel glass"><div class="panel-head"><div><span class="label">Règles</span><h2 style="margin-top:6px">Bonnes pratiques</h2></div></div>
-      <ul class="checks">
-        <li><span class="tk">${ic('check')}</span><span>Interlignage de 1,5 à 1,6 pour le corps, 1,1 à 1,25 pour les titres.</span></li>
-        <li><span class="tk">${ic('check')}</span><span>Lignes de 50 à 75 caractères pour les paragraphes.</span></li>
-        <li><span class="tk">${ic('check')}</span><span>Étiquettes en capitales avec un espacement de 14 à 16 %, comme « ÉTAPE 2 ».</span></li>
-        <li><span class="tk">${ic('check')}</span><span>Nombres au format français : 438,45 €, 1 240 px, 09/11/2026, 14 h 30.</span></li>
-        <li><span class="tk no">${ic('x')}</span><span>Pas d'italique décoratif, pas de texte souligné hors liens, pas de capitales sur plus de trois mots.</span></li>
-      </ul></div>`;
+      <ul class="checks">${B.typoDo.map(okLi).join('')}${B.typoDont.map(noLi).join('')}</ul>${B.typoDo.length+B.typoDont.length?'':emptyP('Aucune règle définie.')}</div>`;
 }
+const genLogo=(k,dark)=>{const b=BRANDS[k],deep=roleHex(k,'profond'),acc=k==='groupe'?(dark?'#F5F4F0':'#1D2226'):roleHex(k,'accent');
+  return dark?`<span class="logo" style="color:#fff"><span class="mk" style="background:${acc}"><svg viewBox="0 0 24 24" style="stroke:${k==='groupe'?'#1D2226':deep}"><path d="M7 5v14M17 5v14M7 12h10"/><path d="M12 12l3.2-4" stroke-width="2"/></svg></span><span class="wm"><b>HYMPYR</b><i style="color:${acc}">${b.sub}</i></span></span>`
+    :`<span class="logo" style="color:${deep}"><span class="mk" style="background:${acc}"><svg viewBox="0 0 24 24" style="stroke:#fff"><path d="M7 5v14M17 5v14M7 12h10"/><path d="M12 12l3.2-4" stroke-width="2"/></svg></span><span class="wm"><b>HYMPYR</b><i style="color:${k==='groupe'?'#5B636A':acc}">${b.sub}</i></span></span>`};
+const logoBg=(k,f)=>f==='clair'?'#F5F4F0':f==='sombre'?roleHex(k,'profond'):f;
 function renderLogo(){
-  const tiles=BRAND_KEYS.map(k=>{const b=BRANDS[k];const deep=roleHex(k,'profond');const acc=k==='groupe'?'#F5F4F0':roleHex(k,'accent');const L=logoSet(k);
-    const imgD=L.dark||'', imgL=L.light||'';
-    return `<div class="tile card" style="display:flex;flex-direction:column;gap:14px">
-      <div style="background:${deep};border-radius:14px;padding:22px;display:grid;place-items:center;min-height:88px">
-        ${imgD?`<img class="logo-img" src="${esc(imgD)}" alt="Logo ${esc(b.nom)} sur fond sombre">`:`<span class="logo" style="color:#fff"><span class="mk" style="background:${acc}"><svg viewBox="0 0 24 24" style="stroke:${k==='groupe'?'#1D2226':deep}"><path d="M7 5v14M17 5v14M7 12h10"/><path d="M12 12l3.2-4" stroke-width="2"/></svg></span><span class="wm"><b>HYMPYR</b><i style="color:${acc}">${b.sub}</i></span></span>`}</div>
-      <div style="background:#F5F4F0;border-radius:14px;padding:22px;display:grid;place-items:center;border:1px solid var(--hair);min-height:88px">
-        ${imgL?`<img class="logo-img" src="${esc(imgL)}" alt="Logo ${esc(b.nom)} sur fond clair">`:`<span class="logo" style="color:${deep}"><span class="mk" style="background:${k==='groupe'?'#1D2226':acc}"><svg viewBox="0 0 24 24" style="stroke:#fff"><path d="M7 5v14M17 5v14M7 12h10"/><path d="M12 12l3.2-4" stroke-width="2"/></svg></span><span class="wm"><b>HYMPYR</b><i style="color:${k==='groupe'?'#5B636A':acc}">${b.sub}</i></span></span>`}</div>
-      <b style="color:var(--head);font-size:14px">${b.nom}</b></div>`}).join('');
+  const k=root.dataset.brand,B=ACT.brands[k],b=BRANDS[k];
+  const variant=x=>{const bg=logoBg(k,x.fond),dk=logoKind(x.fond)==='sombre';return `<div class="tile card" style="display:flex;flex-direction:column;gap:12px">
+    <div style="background:${bg};border-radius:14px;padding:22px;display:grid;place-items:center;min-height:110px;border:1px solid var(--hair)">${x.url?`<img class="logo-img" src="${esc(x.url)}" alt="Logo ${esc(b.nom)}, ${esc(x.n)}">`:genLogo(k,dk)}</div>
+    <b style="color:var(--head);font-size:14px">${esc(x.n||'Logo')}</b><span class="muted" style="font-size:12.5px;margin-top:-6px">${x.fond==='clair'?'Fond clair':x.fond==='sombre'?'Fond sombre':'Fond '+x.fond}${x.url?'':' · logo généré'}</span></div>`};
+  const tiles=BRAND_KEYS.map(kk=>{const L=logoSet(kk);return `<div class="tile card" style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:${roleHex(kk,'profond')};border-radius:14px;padding:22px;display:grid;place-items:center;min-height:88px">${L.dark?`<img class="logo-img" src="${esc(L.dark)}" alt="Logo ${esc(BRANDS[kk].nom)} sur fond sombre">`:genLogo(kk,true)}</div>
+      <div style="background:#F5F4F0;border-radius:14px;padding:22px;display:grid;place-items:center;border:1px solid var(--hair);min-height:88px">${L.light?`<img class="logo-img" src="${esc(L.light)}" alt="Logo ${esc(BRANDS[kk].nom)} sur fond clair">`:genLogo(kk,false)}</div>
+      <b style="color:var(--head);font-size:14px">${BRANDS[kk].nom}</b></div>`}).join('');
   $('[data-sub="logo"]').innerHTML=`
-    <div class="panel glass"><div class="panel-head"><div><span class="label">Déclinaisons</span><h2 style="margin-top:6px">Logotype par marque</h2>
-      <p>Symbole carré à gauche, nom HYMPYR en capitales, nom de la marque espacé dessous dans la couleur d'accent. Version sur fond sombre et sur fond Craie.</p></div></div>
-      <div class="grid g4">${tiles}</div></div>
+    <div class="panel glass"><div class="panel-head"><div><span class="label">${esc(b.nom)}</span><h2 style="margin-top:6px">Déclinaisons du logotype</h2>
+      ${B.logoIntro?`<p>${esc(B.logoIntro)}</p>`:''}</div></div>
+      ${B.logos.length?`<div class="grid g3">${B.logos.map(variant).join('')}</div>`:emptyP('Aucun logo défini pour cette marque.')}</div>
     <div class="grid g2">
-      <div class="panel glass"><span class="label">Usage</span><h2 style="margin:6px 0 20px">À respecter</h2><ul class="checks">
-        <li><span class="tk">${ic('check')}</span><span>Zone de protection égale à la hauteur du symbole sur chaque côté.</span></li>
-        <li><span class="tk">${ic('check')}</span><span>Taille minimale : 24 px de haut à l'écran, 12 mm à l'impression.</span></li>
-        <li><span class="tk">${ic('check')}</span><span>Toujours en haut à gauche dans les outils, les sites et les présentations.</span></li>
-        <li><span class="tk">${ic('check')}</span><span>Sur fond chargé ou photo, placer le logo dans un encart en verre dépoli.</span></li></ul></div>
-      <div class="panel glass"><span class="label">Interdits</span><h2 style="margin:6px 0 20px">À ne jamais faire</h2><ul class="checks">
-        <li><span class="tk no">${ic('x')}</span><span>Déformer, incliner ou recadrer le logotype.</span></li>
-        <li><span class="tk no">${ic('x')}</span><span>Le recolorer hors de la palette de sa marque.</span></li>
-        <li><span class="tk no">${ic('x')}</span><span>Ajouter une ombre, un contour ou un effet.</span></li>
-        <li><span class="tk no">${ic('x')}</span><span>Associer le symbole d'une marque au nom d'une autre.</span></li></ul></div>
-    </div>`;
+      <div class="panel glass"><span class="label">Usage</span><h2 style="margin:6px 0 20px">À respecter</h2>${B.logoDo.length?`<ul class="checks">${B.logoDo.map(okLi).join('')}</ul>`:emptyP('Aucune règle d\'usage.')}</div>
+      <div class="panel glass"><span class="label">Interdits</span><h2 style="margin:6px 0 20px">À ne jamais faire</h2>${B.logoDont.length?`<ul class="checks">${B.logoDont.map(noLi).join('')}</ul>`:emptyP('Aucun interdit.')}</div>
+    </div>
+    <div class="panel glass"><div class="panel-head"><div><span class="label">Vue d'ensemble</span><h2 style="margin-top:6px">Logotype de chaque marque</h2></div></div>
+      <div class="grid g4">${tiles}</div></div>`;
 }
 function renderSpaces(){
-  const sp=[[4,'Écart icône et texte'],[8,'Intérieur des petits composants'],[12,'Entre éléments d\'une liste'],[16,'Entre encarts, marge mobile'],[24,'Intérieur des encarts, entre groupes'],[32,'Intérieur des grands panneaux'],[48,'Entre sections d\'un écran'],[64,'Rythme vertical des sites']];
+  const B=ACT.brands[root.dataset.brand], mx=Math.max(64,...B.spaces.map(x=>x.v));
   $('[data-sub="espaces"]').innerHTML=`
-    <div class="panel glass"><div class="panel-head"><div><span class="label">Échelle</span><h2 style="margin-top:6px">Espacements sur une base de 4 px</h2>
-      <p>Aucune valeur hors de cette échelle. Les encarts ne se touchent jamais : 16 px minimum entre deux encarts.</p></div></div>
-      ${sp.map(s=>`<div class="space-row"><b style="color:var(--head);font-size:14px">${s[0]} px</b><span><span class="space-bar" style="display:block;width:${s[0]/64*100}%"></span></span><span class="muted" style="font-size:12.5px">${s[1]}</span></div>`).join('')}
+    <div class="panel glass"><div class="panel-head"><div><span class="label">Échelle</span><h2 style="margin-top:6px">Espacements</h2>
+      ${B.spaceNote?`<p>${esc(B.spaceNote)}</p>`:''}</div></div>
+      ${B.spaces.map(x=>`<div class="space-row"><b style="color:var(--head);font-size:14px">${x.v} px</b><span><span class="space-bar" style="display:block;width:${Math.max(1,x.v/mx*100)}%"></span></span><span class="muted" style="font-size:12.5px">${esc(x.u)}</span></div>`).join('')||emptyP('Aucun espacement défini.')}
     </div>
     <div class="panel glass"><div class="panel-head"><div><span class="label">Rayons</span><h2 style="margin-top:6px">Arrondis</h2></div></div>
-      <div class="radius-demo">${[[12,'Champs, puces'],[16,'Tuiles internes'],[24,'Encarts en verre'],[999,'Boutons en pilule']].map(r=>`<div class="tile" style="border-radius:${Math.min(r[0],48)}px"><span><b style="color:var(--head)">${r[0]===999?'Pilule':r[0]+' px'}</b><br>${r[1]}</span></div>`).join('')}</div>
+      ${B.radii.length?`<div class="radius-demo" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">${B.radii.map(r=>`<div class="tile" style="border-radius:${Math.min(r.v,48)}px"><span><b style="color:var(--head)">${r.v>=999?'Pilule':r.v+' px'}</b><br>${esc(r.u)}</span></div>`).join('')}</div>`:emptyP('Aucun arrondi défini.')}
     </div>`;
 }
 
@@ -1483,6 +1531,7 @@ function renderTypes(){
     swap($('#creaBody'),creaHTML(),{after:wireCrea});
   };
 }
+function creaRulesHTML(){const r=(ACT.creas[crea.type]||{rules:[]}).rules;return r.length?r.map(okLi).join(''):'<li class="muted">Aucune règle définie.</li>'}
 function creaHTML(){
   const c=CREAS[crea.type]; if(!crea.variant) crea.variant=c.variants[0][0];
   return `<div class="crea-body">
@@ -1494,7 +1543,7 @@ function creaHTML(){
     </div>
     <div style="display:flex;flex-direction:column;gap:24px;min-width:0">
       <div class="panel glass"><span class="label">${c.prio}</span><h2 style="margin:6px 0 20px">${c.t}</h2>
-        <ul class="checks">${c.rules.map(r=>`<li><span class="tk">${ic('check')}</span><span>${r}</span></li>`).join('')}</ul></div>
+        <ul class="checks" id="creaRules">${creaRulesHTML()}</ul></div>
       <div class="panel glass"><span class="label">Gamification</span><p style="margin-top:10px">${c.game}</p></div>
       <div class="panel glass"><span class="label">Spécifications</span><div class="specs" style="margin-top:16px">${c.specs.map(s=>`<div class="tile spec"><small>${s[0]}</small><b>${s[1]}</b></div>`).join('')}</div></div>
     </div></div>`;
@@ -1598,6 +1647,7 @@ function mockHTML(){
    RENDER : COMPOSANTS
    ========================================================= */
 function codeBlock(txt){return `<div class="code-wrap"><pre class="code">${txt.replace(/</g,'&lt;')}</pre><button class="icon-btn" data-code aria-label="Copier le code">${ic('copy')}</button></div>`}
+function qaHTML(){return ACT.qa.length?ACT.qa.map(q=>q.ok?okLi(q.t):noLi(q.t)).join(''):'<li class="muted">Aucun critère défini.</li>'}
 function renderComp(){
   $('[data-sub="verre"]').innerHTML=`
     <div class="grid g2">
@@ -1701,11 +1751,7 @@ function renderComp(){
       <div class="panel glass"><span class="label">Thème</span><h2 style="margin:6px 0 8px">Onde clair / sombre</h2>
         <p class="muted" style="margin-bottom:20px">Le nouveau mode se révèle dans une onde circulaire partie de l'angle supérieur droit, jusqu'à l'angle inférieur gauche.</p>
         <button class="btn mag" id="waveDemo">Tester la transition</button></div>
-      <div class="panel glass"><span class="label">Contrôle qualité</span><h2 style="margin:6px 0 20px">Critères d'échec</h2><ul class="checks">
-        <li><span class="tk no">${ic('x')}</span><span>Une image saute, un bloc apparaît sans fondu, un écran change d'un coup.</span></li>
-        <li><span class="tk no">${ic('x')}</span><span>Une animation saccade ou ralentit l'interface sur un ordinateur standard.</span></li>
-        <li><span class="tk no">${ic('x')}</span><span>Un changement de hauteur fait sauter la page au lieu de s'étirer.</span></li>
-        <li><span class="tk">${ic('check')}</span><span>Préférence « réduire les animations » respectée par des fondus courts.</span></li></ul></div>
+      <div class="panel glass"><span class="label">Contrôle qualité</span><h2 style="margin:6px 0 20px">Critères d'échec</h2><ul class="checks" id="qaList">${qaHTML()}</ul></div>
     </div>`;
   initInteractive($('#v-composants'));
   // demos
@@ -1884,7 +1930,8 @@ $('#continueBtn').onclick=()=>{const n=nextUnseen(); if(!n){go('regles',{sub:'qu
   if(v==='creations'){crea.type=s;crea.variant=null;crea.slide=0;store.set('hy-crea',s);renderTypes();$('#creaBody').innerHTML=creaHTML();wireCrea($('#creaBody'));go('creations')} else go(v,{sub:s})};
 
 function renderBrandDependent(){
-  renderLogos(); renderHome(); renderColors(); renderLogo();
+  renderLogos(); renderHome(); renderColors(); renderTypo(); renderLogo(); renderSpaces();
+  const cr=$('#creaRules'); if(cr) cr.innerHTML=creaRulesHTML(); const qa=$('#qaList'); if(qa) qa.innerHTML=qaHTML();
   $$('#univers button[data-v]').forEach(b=>{const d=$('.dot',b);if(d)d.style.background=roleHex(b.dataset.v,b.dataset.v==='groupe'?'action':'accent')});
   if($('#creaBody').innerHTML){ $('#stageView')&&($('#stageView').innerHTML=mockHTML()); $('.stage .label')&&($('.stage .label').textContent='Aperçu · '+BRANDS[root.dataset.brand].nom); }
   if($('[data-sub="nav"]').innerHTML) renderComp();
@@ -2012,6 +2059,64 @@ function openRulesEditor(k){
   segSet($('#edTabs'),'regles'); swap($('#edBody'),edBodyHTML(),{after:wireEd});
 }
 $('#v-regles').addEventListener('click',e=>{const b=e.target.closest('[data-edit-rules]');if(b&&canEdit) openRulesEditor(b.dataset.editRules)});
+const ED_TABS=[['couleurs','Couleurs'],['typo','Typographie'],['logos','Logos'],['espaces','Espacements'],['creations','Créations'],['qualite','Contrôle qualité'],['regles','Règles']];
+let edCrea='outil';
+/* generic editable lists : path 'b.x' = current brand, otherwise from the root of the draft */
+function lget(p,conf=draft){const parts=p.split('.');let o=parts[0]==='b'?conf.brands[root.dataset.brand]:conf;for(const x of (parts[0]==='b'?parts.slice(1):parts)) o=o?o[x]:undefined;return o}
+function lset(p,v,conf=draft){const parts=p.split('.');let o=parts[0]==='b'?conf.brands[root.dataset.brand]:conf;const ks=parts[0]==='b'?parts.slice(1):parts;ks.slice(0,-1).forEach(x=>o=o[x]);o[ks[ks.length-1]]=v}
+const ROLE_F=[['titres','Titres'],['texte','Texte courant']];
+const TXT=(t,add,ph)=>({title:t,add,blank:()=>'',fields:[{t:'area',ph}],str:true});
+function schema(p){
+  if(p.startsWith('creas.')) return TXT('Règles de conception','Ajouter une règle','Une règle claire et vérifiable');
+  return ({
+    'b.fonts':{title:'Typographies',add:'Ajouter une typographie',blank:()=>({n:'Nouvelle police',family:'Poppins',src:'google',r:[],u:''}),font:true},
+    'b.weights':{title:'Graisses autorisées',add:'Ajouter une graisse',blank:()=>({w:400,n:'Regular',u:''}),fields:[{k:'w',t:'num',l:'Graisse',min:100,max:900,step:100,w:90},{k:'n',t:'text',l:'Nom'},{k:'u',t:'text',l:'Usage',full:true}]},
+    'b.scale':{title:'Hiérarchie typographique',add:'Ajouter un niveau',blank:()=>({n:'Niveau',ex:'Exemple de texte',sp:'16 / 24 · 400',s:16,w:400}),fields:[{k:'n',t:'text',l:'Niveau'},{k:'s',t:'num',l:'Taille px',min:8,max:160,w:90},{k:'w',t:'num',l:'Graisse',min:100,max:900,step:100,w:90},{k:'ex',t:'text',l:'Exemple',full:true},{k:'sp',t:'text',l:'Spécification',full:true}]},
+    'b.typoDo':TXT('Bonnes pratiques typographiques','Ajouter une bonne pratique','Ce qu\'il faut faire'),
+    'b.typoDont':TXT('Interdits typographiques','Ajouter un interdit','Ce qu\'il ne faut jamais faire'),
+    'b.logos':{title:'Logos',add:'Ajouter un logo',blank:()=>({n:'Nouvelle déclinaison',fond:'clair',url:''}),logo:true},
+    'b.logoDo':TXT('Règles d\'usage des logos','Ajouter une règle d\'usage','Ce qu\'il faut respecter'),
+    'b.logoDont':TXT('Interdits d\'usage des logos','Ajouter un interdit','Ce qu\'il ne faut jamais faire'),
+    'b.spaces':{title:'Échelle d\'espacements',add:'Ajouter un espacement',blank:()=>({v:16,u:''}),fields:[{k:'v',t:'num',l:'Valeur px',min:0,max:400,w:100},{k:'u',t:'text',l:'Usage'}]},
+    'b.radii':{title:'Arrondis',add:'Ajouter un arrondi',blank:()=>({v:16,u:''}),fields:[{k:'v',t:'num',l:'Rayon px (999 = pilule)',min:0,max:999,w:100},{k:'u',t:'text',l:'Usage'}]},
+    'qa':{title:'Critères du contrôle qualité',add:'Ajouter un critère',blank:()=>({t:'',ok:false}),fields:[{k:'t',t:'area',ph:'Ce qui fait échouer une production'},{k:'ok',t:'sel',l:'Type',opts:[[false,'Critère d\'échec'],[true,'Exigence à respecter']]}]}
+  })[p];
+}
+function fieldHTML(f,v){
+  const lab=f.l?`<span class="ed-fl">${esc(f.l)}</span>`:'';
+  if(f.t==='area') return `<label class="ed-f full">${lab}<textarea class="input" data-lf="${f.k||''}" rows="2" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea></label>`;
+  if(f.t==='num') return `<label class="ed-f" style="${f.w?`flex:0 0 ${f.w}px`:''}">${lab}<input class="input" type="number" data-lf="${f.k}" value="${esc(v)}" min="${f.min??''}" max="${f.max??''}" step="${f.step||1}"></label>`;
+  if(f.t==='sel') return `<label class="ed-f ${f.full?'full':''}">${lab}<select class="input" data-lf="${f.k}">${f.opts.map(([ov,ol])=>`<option value="${ov}" ${String(ov)===String(v)?'selected':''}>${esc(ol)}</option>`).join('')}</select></label>`;
+  return `<label class="ed-f ${f.full?'full':''}">${lab}<input class="input" data-lf="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}"></label>`;
+}
+function fontRow(x,i,p){return `<div class="ed-fields">
+    <div class="ed-sample" style="font-family:'${esc(x.family)}',Poppins,sans-serif;padding:12px 14px"><b style="font-family:inherit;font-size:20px">Aa Bb Cc 0123</b></div>
+    <label class="ed-f full"><span class="ed-fl">Rôle ou usage</span><input class="input" data-lf="n" value="${esc(x.n)}" placeholder="Titres, texte courant, chiffres..."></label>
+    <label class="ed-f full"><span class="ed-fl">Police Google Fonts (validée en quittant le champ)</span><input class="input" list="fontList" data-lf="family" value="${esc(x.family)}" maxlength="60"></label>
+    <div class="ed-f full"><span class="ed-fl">Appliquée dans l'outil aux</span><div class="roles">${ROLE_F.map(([r,l])=>`<button type="button" class="role ${x.r.includes(r)?'on':''}" data-frole="${r}" aria-pressed="${x.r.includes(r)}">${l}</button>`).join('')}</div></div>
+    <label class="ed-f full"><span class="ed-fl">Description</span><textarea class="input" data-lf="u" rows="2">${esc(x.u)}</textarea></label>
+    <p class="msg" data-msg="f${i}"></p>
+    <div class="btn-row"><label class="btn ghost sm file-btn">${ic('upload')}Importer un fichier<input type="file" accept=".woff2,.woff,.ttf,.otf" data-lup="font"></label><span class="ed-note">${x.src==='google'?'Source : Google Fonts':'Source : fichier importé'}</span></div></div>`}
+function logoRow(x,i){const k=root.dataset.brand,custom=!['clair','sombre'].includes(x.fond),bg=custom?x.fond:x.fond==='clair'?'#F5F4F0':roleHex(k,'profond',draft);
+  return `<div class="ed-fields">
+    <div class="ed-logo" style="background:${bg};min-height:90px">${x.url?`<img src="${esc(x.url)}" alt="">`:`<span style="color:${logoKind(x.fond)==='sombre'?'rgba(255,255,255,.72)':'#5B636A'}">Logo généré par défaut</span>`}</div>
+    <label class="ed-f full"><span class="ed-fl">Nom de la déclinaison</span><input class="input" data-lf="n" value="${esc(x.n)}" placeholder="Sur fond clair, monochrome, symbole seul..."></label>
+    <label class="ed-f"><span class="ed-fl">Fond</span><select class="input" data-lf="fondSel"><option value="clair" ${x.fond==='clair'?'selected':''}>Fond clair</option><option value="sombre" ${x.fond==='sombre'?'selected':''}>Fond sombre</option><option value="perso" ${custom?'selected':''}>Couleur précise</option></select></label>
+    ${custom?`<label class="ed-f" style="flex:0 0 120px"><span class="ed-fl">Couleur du fond</span><input class="input ed-hex" data-lf="fondHex" value="${esc(x.fond)}" maxlength="7" spellcheck="false"></label>`:''}
+    <p class="msg" data-msg="l${i}"></p>
+    <div class="btn-row"><label class="btn ghost sm file-btn">${ic('upload')}${x.url?'Remplacer le fichier':'Importer le logo'}<input type="file" accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp" data-lup="logo"></label>${x.url?`<button type="button" class="btn text sm" data-lact="unlogo">Retirer le fichier</button>`:''}</div></div>`}
+function listHTML(p){
+  const S=schema(p), items=lget(p)||[], brand=p.startsWith('b.');
+  return `<div class="tile ed-card" data-list="${p}">
+    <div class="ed-lh"><span class="label">${esc(S.title)}</span><span class="ed-cnt">${items.length}</span></div>
+    <div class="ed-items">${items.map((x,i)=>`<div class="ed-item" data-i="${i}">
+      ${S.font?fontRow(x,i,p):S.logo?logoRow(x,i):`<div class="ed-fields">${S.fields.map(f=>fieldHTML(f,S.str?x:x[f.k])).join('')}</div>`}
+      <div class="ed-ops"><button type="button" class="icon-btn" data-lact="up" aria-label="Monter" ${i===0?'disabled':''}>${ic('up')}</button><button type="button" class="icon-btn" data-lact="down" aria-label="Descendre" ${i===items.length-1?'disabled':''}>${ic('down')}</button><button type="button" class="icon-btn" data-lact="del" aria-label="Supprimer">${ic('x')}</button></div>
+    </div>`).join('')||'<p class="ed-note">Liste vide.</p>'}</div>
+    <div class="btn-row"><button type="button" class="btn ghost sm" data-lact="add">${ic('plus')}${esc(S.add)}</button><button type="button" class="btn text sm" data-lact="reset">Rétablir l'origine</button>${brand?`<button type="button" class="btn text sm" data-lact="all">Appliquer aux autres marques</button>`:''}</div>
+  </div>`;
+}
+function noteField(p,l){return `<label class="tile ed-card"><span class="label">${l}</span><textarea class="input" data-sf="${p}" rows="3">${esc(lget(p)||'')}</textarea></label>`}
 function edBodyHTML(){
   if(edTab==='regles') return rulesBodyHTML();
   const k=root.dataset.brand;
@@ -2022,25 +2127,25 @@ function edBodyHTML(){
       <div class="btn-row"><button class="btn ghost sm" data-ed="add">Ajouter une couleur</button><button class="btn text sm" data-ed="reset-colors">Rétablir la palette d'origine</button></div>
       <div class="tile ed-card" id="edCheck">${checkHTML(k)}</div>`;
   }
-  if(edTab==='logos'){
-    const L=logoSet(k,draft), own=draft.logos[k]||{}, D=DEFAULTS.logos[k]||{}; const deep=roleHex(k,'profond',draft);
-    return `${brandSegHTML('edBrand')}
-      <p class="ed-note">SVG recommandé, PNG ou WebP acceptés, 5 Mo maximum. Le logo s'affiche sur 36 px de haut dans la barre de navigation.</p>
-      ${[['light','Sur fond clair','#F5F4F0'],['dark','Sur fond sombre',mixHex(deep,'#05070A',.58)]].map(([v,l,bg])=>`<div class="tile ed-card"><span class="label">${l}</span>
-        <div class="ed-logo" style="background:${bg}">${L[v]?`<img src="${esc(L[v])}" alt="Logo ${l.toLowerCase()}">`:`<span style="color:${v==='dark'?'rgba(255,255,255,.72)':'#5B636A'}">Logo généré par défaut</span>`}</div>
-        <p class="msg" data-msg="${v}"></p>
-        <div class="btn-row"><label class="btn ghost sm file-btn">${L[v]?'Remplacer':'Importer un logo'}<input type="file" accept=".svg,.png,.webp,image/svg+xml,image/png,image/webp" data-f="logo" data-v="${v}"></label>${own[v]&&own[v]!==D[v]?`<button class="btn text sm" data-ed="logo-del" data-v="${v}">${D[v]?'Revenir au logo officiel':'Retirer'}</button>`:''}</div></div>`).join('')}`;
-  }
-  return `<datalist id="fontList">${FONT_SUGG.map(f=>`<option value="${f}"></option>`).join('')}</datalist>
-    <p class="ed-note">La charte prévoit Poppins pour toutes les marques. Saisissez le nom d'une police Google Fonts ou importez un fichier (WOFF2, WOFF, TTF, OTF).</p>
-    ${[['titres','Titres','Préparer une tournée'],['texte','Texte courant','La distance routière réelle depuis le dépôt détermine les frais de livraison.']].map(([t,l,sample])=>{const f=draft.fonts[t];return `<div class="tile ed-card" data-t="${t}"><span class="label">${l}</span>
-      <div class="ed-sample" style="font-family:'${esc(f.family)}',Poppins,sans-serif"><b style="font-family:inherit;font-weight:${t==='titres'?700:400}">${t==='titres'?'Préparer une tournée':'Aa Bb Cc 0123'}</b><p style="font-family:inherit">${sample}</p></div>
-      <div class="ed-row"><input class="input" list="fontList" data-f="fam" value="${esc(f.family)}" maxlength="60" aria-label="Nom de la police ${l}" style="flex:1"><button class="btn sm mag" data-ed="font-apply" data-t="${t}">Appliquer</button></div>
-      <p class="msg" data-msg="${t}"></p>
-      <div class="btn-row"><label class="btn ghost sm file-btn">Importer un fichier<input type="file" accept=".woff2,.woff,.ttf,.otf" data-f="fontfile" data-t="${t}"></label>${f.family!=='Poppins'?`<button class="btn text sm" data-ed="font-reset" data-t="${t}">Revenir à Poppins</button>`:''}</div>
-      <span class="ed-note">${f.src==='google'?'Source : Google Fonts':'Source : fichier importé'}</span></div>`}).join('')}`;
+  if(edTab==='typo') return `${brandSegHTML('edBrand')}<datalist id="fontList">${FONT_SUGG.map(f=>`<option value="${f}"></option>`).join('')}</datalist>
+    <p class="ed-note">Saisissez le nom exact d'une police Google Fonts ou importez un fichier (WOFF2, WOFF, TTF, OTF). Les rôles « Titres » et « Texte courant » appliquent la police dans l'outil.</p>
+    ${listHTML('b.fonts')}${listHTML('b.weights')}${listHTML('b.scale')}${listHTML('b.typoDo')}${listHTML('b.typoDont')}`;
+  if(edTab==='logos') return `${brandSegHTML('edBrand')}
+    <p class="ed-note">SVG recommandé, PNG ou WebP acceptés, 5 Mo maximum. La première déclinaison sur fond clair et la première sur fond sombre s'affichent dans la barre de navigation.</p>
+    ${noteField('b.logoIntro','Présentation du logotype')}${listHTML('b.logos')}${listHTML('b.logoDo')}${listHTML('b.logoDont')}`;
+  if(edTab==='espaces') return `${brandSegHTML('edBrand')}${noteField('b.spaceNote','Règle générale')}${listHTML('b.spaces')}${listHTML('b.radii')}`;
+  if(edTab==='creations') return `<div class="seg glass glide scroll" id="edCreaSeg" style="background:var(--glass);align-self:flex-start"></div>
+    <p class="ed-note">Règles affichées dans l'onglet Créations pour ce type de production. Communes à toutes les marques.</p>${listHTML(`creas.${edCrea}.rules`)}`;
+  return `<p class="ed-note">Critères affichés dans Composants, onglet Mouvement. Communs à toutes les marques.</p>${listHTML('qa')}`;
+}
+function growAreas(scope){if(CSS.supports&&CSS.supports('field-sizing','content'))return;$$('.ed-item textarea',scope||$('#edBody')).forEach(t=>{t.style.height='auto';t.style.height=Math.min(260,t.scrollHeight+2)+'px'})}
+function redrawList(p,focus){
+  const card=$(`[data-list="${CSS.escape(p)}"]`); if(!card) return; const t=document.createElement('div'); t.innerHTML=listHTML(p); const n=t.firstElementChild; card.replaceWith(n); growAreas(n);
+  if(focus!=null){const it=$(`.ed-item[data-i="${focus}"]`,n); if(it){const f=$('input,textarea,select',it); if(f) f.focus({preventScroll:false}); it.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:380,easing:EASE})}}
 }
 function wireEd(){
+  growAreas();
+  const cs=$('#edCreaSeg'); if(cs) seg(cs,Object.entries(CREAS).map(([k,c])=>[k,c.t]),edCrea,v=>{edCrea=v;const p=`creas.${v}.rules`,card=$('[data-list^="creas."]');if(card){const t=document.createElement('div');t.innerHTML=listHTML(p);card.replaceWith(t.firstElementChild)}});
   const er=$('#edRule');
   if(er) seg(er,RULE_SETS,edRule,v=>{edRule=v;swap($('#edBody'),edBodyHTML(),{after:wireEd})});
   const eb=$('#edBrand');
@@ -2064,7 +2169,7 @@ function openEditor(){
   if(!canEdit) return;
   draft=clone(CONF); pendingClose=false;
   const ed=$('#editor'); ed.hidden=false; root.classList.add('editing');
-  seg($('#edTabs'),[['couleurs','Couleurs'],['logos','Logos'],['typo','Typographies'],['regles','Règles']],edTab,v=>{edTab=v;swap($('#edBody'),edBodyHTML(),{after:wireEd})});
+  seg($('#edTabs'),ED_TABS,edTab,v=>{edTab=v;swap($('#edBody'),edBodyHTML(),{after:wireEd})});
   $('#edBody').innerHTML=edBodyHTML(); wireEd(); edStatus();
   ed.animate([{opacity:0,transform:MOBILE()?'translateY(32px)':'translateX(32px)'},{opacity:1,transform:'none'}],{duration:520,easing:EASE});
   requestAnimationFrame(()=>{const t=$('#edTabs'),b=$('button.on',t);place(t._ind,b,true);if(b)t.scrollLeft=b.offsetLeft-(t.clientWidth-b.offsetWidth)/2});
@@ -2151,6 +2256,58 @@ $('#edBody').addEventListener('change',async e=>{
       fam=fam.replace(/["'<>;{}\\]/g,'').trim().slice(0,60)||'Police importée'; draft.fonts[key]={family:fam,src:url}}
     pendingClose=false; preview(); swap($('#edBody'),edBodyHTML(),{after:wireEd});
   }catch(err){edMsg(key,err.message||'Import impossible.')}
+});
+
+/* ---------- editable lists ---------- */
+$('#edBody').addEventListener('input',e=>{
+  if(!draft) return; const t=e.target;
+  if(t.dataset.sf){lset(t.dataset.sf,t.value.slice(0,400));pendingClose=false;preview();return}
+  const lf=t.dataset.lf; if(lf==null) return; const card=t.closest('[data-list]'), it=t.closest('[data-i]'); if(!card||!it) return;
+  const p=card.dataset.list, S=schema(p), list=lget(p), i=+it.dataset.i; if(!list||list[i]===undefined) return;
+  if(lf==='family'||lf==='fondSel') return; /* applied on change */
+  if(t.tagName==='TEXTAREA') growAreas(it);
+  if(S.str){list[i]=t.value.slice(0,300)}
+  else if(lf==='fondHex'){let v=t.value.trim();if(v&&v[0]!=='#')v='#'+v;if(/^#[0-9a-f]{6}$/i.test(v)){list[i].fond=v.toUpperCase();t.classList.remove('bad');const lg=$('.ed-logo',it);if(lg)lg.style.background=v}else{t.classList.add('bad');return}}
+  else{const f=(S.fields||[]).find(x=>x.k===lf);let v=t.value;
+    if(f&&f.t==='num'){if(v==='')return;v=Math.min(f.max??1e4,Math.max(f.min??0,Math.round(+v||0)))}
+    else if(f&&f.t==='sel'){v=v==='true'}
+    else v=v.slice(0,lf==='u'?200:240);
+    list[i][lf]=v}
+  pendingClose=false; preview();
+});
+$('#edBody').addEventListener('change',e=>{
+  if(!draft) return; const t=e.target, lf=t.dataset.lf; if(lf!=='family'&&lf!=='fondSel'&&!(t.tagName==='SELECT'&&lf)) return;
+  const card=t.closest('[data-list]'), it=t.closest('[data-i]'); if(!card||!it) return; const p=card.dataset.list, list=lget(p), i=+it.dataset.i;
+  if(lf==='family'){const fam=cleanFam(t.value);if(!fam){t.classList.add('bad');return}t.classList.remove('bad');list[i].family=fam;list[i].src='google';pendingClose=false;preview();redrawList(p);
+    if(fam!=='Poppins') setTimeout(()=>{document.fonts.load(`16px "${fam}"`).then(r=>{if(!r.length)edMsg('f'+i,'Police introuvable sur Google Fonts. Vérifiez l\'orthographe exacte.')}).catch(()=>{})},1600);return}
+  if(lf==='fondSel'){const v=t.value;list[i].fond=v==='perso'?(/^#/.test(list[i].fond)?list[i].fond:'#FFFFFF'):v;pendingClose=false;preview();redrawList(p);return}
+  if(t.tagName==='SELECT'){const S=schema(p);if(S&&!S.str){list[i][lf]=t.value==='true';pendingClose=false;preview()}}
+});
+$('#edBody').addEventListener('change',async e=>{
+  const t=e.target, kind=t.dataset.lup; if(!draft||!kind) return; const file=t.files&&t.files[0]; if(!file) return;
+  const card=t.closest('[data-list]'), it=t.closest('[data-i]'), p=card.dataset.list, i=+it.dataset.i, list=lget(p), key=(kind==='logo'?'l':'f')+i;
+  edMsg(key,'Import en cours','ok');
+  try{const url=await uploadAsset(file,kind==='logo'?'logos':'fonts');
+    if(kind==='logo') list[i].url=url;
+    else{let fam=list[i].family&&list[i].family!=='Poppins'?list[i].family:file.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ');list[i].family=cleanFam(fam)||'Police importée';list[i].src=url}
+    pendingClose=false; preview(); redrawList(p);
+  }catch(err){edMsg(key,err.message||'Import impossible.')}
+});
+$('#edBody').addEventListener('click',async e=>{
+  if(!draft) return;
+  const fr=e.target.closest('[data-frole]');
+  if(fr){const card=fr.closest('[data-list]'),list=lget(card.dataset.list),i=+fr.closest('[data-i]').dataset.i,r=fr.dataset.frole,had=list[i].r.includes(r);
+    list.forEach(x=>x.r=x.r.filter(y=>y!==r)); if(!had) list[i].r.push(r); pendingClose=false; preview(); redrawList(card.dataset.list); return}
+  const b=e.target.closest('[data-lact]'); if(!b||b.disabled) return;
+  const card=b.closest('[data-list]'); if(!card) return; const p=card.dataset.list, S=schema(p); let list=lget(p); const it=b.closest('[data-i]'), i=it?+it.dataset.i:-1, a=b.dataset.lact;
+  pendingClose=false;
+  if(a==='add'){list.push(S.blank());preview();redrawList(p,list.length-1);return}
+  if(a==='up'&&i>0){[list[i-1],list[i]]=[list[i],list[i-1]];preview();redrawList(p,i-1);return}
+  if(a==='down'&&i<list.length-1){[list[i+1],list[i]]=[list[i],list[i+1]];preview();redrawList(p,i+1);return}
+  if(a==='del'){await it.animate([{opacity:1},{opacity:0,transform:'scale(.98)'}],{duration:200,easing:EASE,fill:'forwards'}).done;list.splice(i,1);preview();redrawList(p);toast('Élément retiré. « Annuler » rétablit la version enregistrée.','x');return}
+  if(a==='unlogo'){list[i].url='';preview();redrawList(p);return}
+  if(a==='reset'){lset(p,clone(lget(p,DEFAULTS)));preview();redrawList(p);toast('Valeurs d\'origine rétablies');return}
+  if(a==='all'){const cur=clone(list),key=p.split('.').slice(1).join('.'),me=root.dataset.brand;BRAND_KEYS.filter(k=>k!==me).forEach(k=>{draft.brands[k][key]=clone(cur)});preview();toast('Appliqué aux quatre marques');return}
 });
 
 /* =========================================================
