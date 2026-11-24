@@ -263,7 +263,24 @@ html[data-theme="dark"] .sh{filter:blur(80px)}
 .file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
 html.editing .ticket-fab{opacity:0;pointer-events:none;transform:translateY(12px)}
 .ticket-fab{transition:opacity .4s var(--ease),transform .4s var(--ease)}
-@media (min-width:1101px){main{transition:padding-right .5s var(--ease)} html.editing main{padding-right:480px}}
+/* edit mode on desktop : full-width panel docked at the bottom, 45 % of the screen height */
+@media (min-width:861px){
+  main{transition:padding-bottom .5s var(--ease)}
+  html.editing main{padding-bottom:calc(max(45vh,300px) + 32px)}
+  .drawer{top:auto;left:16px;right:16px;bottom:16px;width:auto;max-width:none;height:45vh;min-height:300px}
+  .dr-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:20px;padding:12px 16px 12px 24px}
+  .dr-head .top{display:contents}
+  .dr-head .top > div{order:0;min-width:0}
+  .dr-head .top > div .label{display:none}
+  .dr-head .top > div h2{font-size:18px;margin:0!important;white-space:nowrap}
+  .dr-head #edTabs{order:1;justify-self:center;align-self:center!important;max-width:100%;min-width:0}
+  .dr-head #edTabs > button{flex:0 0 auto}
+  .dr-head .top > .icon-btn{order:2}
+  .dr-body{padding:16px 24px 20px}
+  #edColors,#edRuleList,.dr-body .ed-items{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));align-items:start;gap:12px!important}
+  .dr-body .ed-items > .ed-note{grid-column:1/-1}
+  .dr-foot{padding:10px 24px}
+}
 
 /* =========================================================
    LOGIN
@@ -2262,7 +2279,7 @@ function openEditor(){
   const ed=$('#editor'); ed.hidden=false; root.classList.add('editing');
   seg($('#edTabs'),ED_TABS,edTab,v=>{edTab=v;swap($('#edBody'),edBodyHTML(),{after:wireEd})});
   $('#edBody').innerHTML=edBodyHTML(); wireEd(); edStatus();
-  ed.animate([{opacity:0,transform:MOBILE()?'translateY(32px)':'translateX(32px)'},{opacity:1,transform:'none'}],{duration:520,easing:EASE});
+  ed.animate([{opacity:0,transform:'translateY(32px)'},{opacity:1,transform:'none'}],{duration:520,easing:EASE});
   requestAnimationFrame(()=>{const t=$('#edTabs'),b=$('button.on',t);place(t._ind,b,true);if(b)t.scrollLeft=b.offsetLeft-(t.clientWidth-b.offsetWidth)/2});
   setTimeout(()=>{$$('.seg,.tabs').forEach(b=>{if(b._ind&&b.offsetParent){const on=$('button.on',b);if(on)place(b._ind,on,false)}})},520);
 }
@@ -2272,7 +2289,7 @@ async function closeEditor(force){
   ed._closing=true;
   if(isDirty()){draft=clone(CONF);applyConfig(CONF);renderBrandDependent()}
   root.classList.remove('editing');
-  await ed.animate([{opacity:1,transform:'none'},{opacity:0,transform:MOBILE()?'translateY(32px)':'translateX(32px)'}],{duration:300,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'}).done;
+  await ed.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(32px)'}],{duration:300,easing:'cubic-bezier(.4,0,1,1)',fill:'forwards'}).done;
   ed.hidden=true; ed._closing=false; ed.getAnimations().forEach(a=>a.cancel()); draft=null; pendingClose=false;
   setTimeout(()=>{$$('.seg,.tabs').forEach(b=>{if(b._ind&&b.offsetParent){const on=$('button.on',b);if(on)place(b._ind,on,false)}})},60);
   $('#editBtn').focus({preventScroll:true});
