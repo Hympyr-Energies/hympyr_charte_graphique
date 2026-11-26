@@ -3,7 +3,36 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Charte Hympyr 2027</title>
+<title>Charte graphique · Hympyr</title>
+<script>
+/* Nom affiché de l'outil : renommable par un administrateur du portail (Administration > Outils).
+   Lu sans connexion par la fonction publique portail_nom_outil() (elle ne renvoie que ce nom).
+   Le dernier nom connu est gardé dans le navigateur pour l'afficher dès l'ouverture, sans clignement.
+   Usage : <span data-nom-outil>…</span> dans la page, window.HYM_NOM_OUTIL() dans le code. */
+(function () {
+  var SLUG = 'charte', DEFAUT = 'Charte graphique', SUFFIXE = ' · Hympyr';
+  var SB_URL = 'https://cmvkijtlkzfwnzipgstc.supabase.co', SB_KEY = 'sb_publishable_Q8HVlAGCLlpF5P3Gqsa_9g_fKDDD0bZ'; // clé publique par conception
+  var CLE = 'hym.nom-outil.' + SLUG, nom = DEFAUT;
+  try { nom = localStorage.getItem(CLE) || DEFAUT; } catch (e) {}
+  function appliquer() {
+    document.title = nom + SUFFIXE;
+    var l = document.querySelectorAll('[data-nom-outil]');
+    for (var i = 0; i < l.length; i++) l[i].textContent = nom;
+  }
+  window.HYM_NOM_OUTIL = function () { return nom; };
+  document.title = nom + SUFFIXE;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appliquer); else appliquer();
+  if (!window.fetch) return;
+  fetch(SB_URL + '/rest/v1/rpc/portail_nom_outil', {
+    method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_slug: SLUG })
+  }).then(function (r) { return r.ok ? r.json() : null; }).then(function (n) {
+    if (typeof n !== 'string' || !n.trim() || n === nom) return;
+    nom = n.trim();
+    try { localStorage.setItem(CLE, nom); } catch (e) {}
+    if (document.readyState !== 'loading') appliquer();
+  }).catch(function () { /* hors ligne ou script SQL pas encore exécuté : on garde le nom connu */ });
+})();
+</script>
 <meta name="theme-color" content="#1D2226">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -683,7 +712,7 @@ html[data-theme="dark"] .mk .bl.soft{background:var(--action)}
 <section id="login" hidden>
   <div class="login-card glass" id="loginCard">
     <div class="logo" data-logo></div>
-    <h1 id="loginTitle">Charte graphique</h1>
+    <h1 id="loginTitle"><span data-nom-outil>Charte graphique</span></h1>
     <p class="lead" id="loginLead">Accès réservé aux membres de l'équipe Hympyr. Connectez-vous avec votre compte.</p>
     <form class="form" id="loginForm" novalidate>
       <label class="field"><span>Adresse e-mail</span>
